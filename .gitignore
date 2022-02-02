@@ -1,6 +1,6 @@
 # span-srl
-span-srl/*
-
+spansrl/*
+data/*
 # exception to the rule
 !span-srl/.gitkeep 
 
@@ -119,3 +119,4 @@ dmypy.json
 # Pyre type checker
 .pyre/
 span-srl/
+spansrl/
