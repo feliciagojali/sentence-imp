@@ -51,7 +51,7 @@ def tokenize(doc, idx_topic, idx_news):
 
         root = None
         for token in tokens:
-            governor = token.name.head
+            governor = token.name.governor
             if (governor > 0):
                 token.parent = tokens[governor - 1]
             else:
