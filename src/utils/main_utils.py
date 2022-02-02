@@ -45,13 +45,13 @@ def tokenize(doc, idx_topic, idx_news):
         tokens = []
         token_words = []
         for word in sentence.words:
-            tok = Node(Token(int(word.index), word.text, word.upos, word.dependency_relation, word.governor))
+            tok = Node(Token(int(word.id), word.text, word.upos, word.deprel, word.head))
             tokens.append(tok)
             token_words.append(word.text)
 
         root = None
         for token in tokens:
-            governor = token.name.governor
+            governor = token.name.head
             if (governor > 0):
                 token.parent = tokens[governor - 1]
             else:
