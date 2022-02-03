@@ -65,7 +65,6 @@ class ExtractedPAS:
         self.doc_similarity_feature = 0.0
         self.docset_similarity_feature = 0.0
         
-        self.label = sentence.label
         self.target = sentence.target
         
         self.num_sentences = sentence.num_sentences # number of sentences in a news

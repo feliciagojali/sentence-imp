@@ -60,12 +60,18 @@ class NewPAS:
             "args": array
         }
         """
-        self.verb = labels['pred_id']
+        self.verb = labels['id_pred']
         for arg in labels['args']:
-            endpoints = [arg[0], arg[1]]
+            endpoints = [x for x in range(arg[0], arg[1]+1)]
             label = arg[2]
-            self.args[label] = endpoints
+            if (label in self.args):
+                self.args[label].append(endpoints)
+            else:
+                endpoints = [endpoints]
+                self.args[label] = endpoints
 
+    def add_text_arg(self, labels, text):
+        self.args[labels] = text
 
     # def __init__(self, agents, verbs, patient, locatives, temporals, goals, causes, extents, adverbials, modals, negations, others):
     #     self.agent = agents

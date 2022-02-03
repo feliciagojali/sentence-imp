@@ -39,27 +39,22 @@ def preprocess_summary(content):
     # print(result)
     return result
 
+def generate_sentence(idx_topic, idx_news, idx_sentence, sentence, len):
+    tokens = [Node(Token(int(word.id), word.text, word.upos, word.deprel, word.head)) for word in sentence.words]
+
+    root = None
+    for token in tokens:
+        governor = token.name.governor
+        if (governor > 0):
+            token.parent = tokens[governor - 1]
+        else:
+            root = token
+
+    return Sentence(idx_topic, idx_news, idx_sentence, sentence, tokens, root, len)
+
 def tokenize(doc, idx_topic, idx_news):
-    sentences = []
-    for idx_sentence, sentence in enumerate(doc.sentences):
-        tokens = []
-        token_words = []
-        for word in sentence.words:
-            tok = Node(Token(int(word.id), word.text, word.upos, word.deprel, word.head))
-            tokens.append(tok)
-            token_words.append(word.text)
-
-        root = None
-        for token in tokens:
-            governor = token.name.governor
-            if (governor > 0):
-                token.parent = tokens[governor - 1]
-            else:
-                root = token
-
-        sentence_obj = Sentence(idx_topic, idx_news, idx_sentence, sentence, tokens, root, len(doc.sentences))
-        sentences.append(sentence_obj)
-
+    length = len(doc.sentences)
+    sentences = [generate_sentence(idx_topic, idx_news, id, sent, length) for id, sent in enumerate(doc.sentences)]
     return sentences
 
 def tokenize_summary(doc):
