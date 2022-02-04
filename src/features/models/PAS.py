@@ -40,18 +40,7 @@ class NewPAS:
     def __init__(self):
         self.args = {}
         self.verb = []
-        # self.agent = []
-        # self.verb = []
-        # self.patient = []
-        # self.location = []
-        # self.temporal = []
-        # self.goal = []
-        # self.cause = []
-        # self.extent = []
-        # self.adverbial = []
-        # self.modal = []
-        # self.negation = []
-        # self.other = []
+       
     
     def add_arg(self, labels): 
         """
@@ -60,7 +49,8 @@ class NewPAS:
             "args": array
         }
         """
-        self.verb = labels['id_pred']
+        
+        self.verb = list(set(labels['id_pred']))
         for arg in labels['args']:
             endpoints = [x for x in range(arg[0], arg[1]+1)]
             label = arg[2]

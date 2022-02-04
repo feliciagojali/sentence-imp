@@ -21,6 +21,17 @@ gdown --id 1NtS61Uzy-SCaJQ3FksgYFlMU04sKHT3y
 unzip summary_corpus.zip
 rm summary_corpus.zip
 
+
+cd ".."
+
+if [ ! -d $FEATURES_PATH ]; then
+  mkdir -p $FEATURES_PATH
+fi
+
+mkdir -p "./train"
+mkdir -p "./test"
+mkdir -p "/val"
+
 # cd ".."
 
 # if [ ! -d $PRETRAINED_PATH ]; then

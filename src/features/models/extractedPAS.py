@@ -28,9 +28,7 @@ class ExtractedPAS:
         self.location_feature = 0.0
         self.title_feature = 0.0
         self.doc_similarity_feature = 0.0
-        self.docset_similarity_feature = 0.0
 
-        self.label = 0
         self.target = 0
         
         self.num_sentences = 0 # number of sentences in a news
