@@ -1,4 +1,4 @@
-from utils.main_utils import tokenize
+from .main_utils import tokenize
 
 def read_sentences(corpus_location):
     f = open(corpus_location, "r")
