@@ -28,10 +28,14 @@ if [ ! -d $FEATURES_PATH ]; then
   mkdir -p $FEATURES_PATH
 fi
 
+cd $FEATURES_PATH
+
 mkdir -p "./train"
 mkdir -p "./test"
-mkdir -p "/val"
-mkdir -p "/srl"
+mkdir -p "./val"
+mkdir -p "./srl"
+
+cd ".."
 
 cd ".."
 
@@ -58,11 +62,11 @@ cd $PRETRAINED_PATH
 
 echo "Downloading pretrained models"
 gdown --id 1-BDiBCLeBRDh7ue2IZhrU06Lfju3VsYm
-unzip w_240_0.00075.zip
-rm w_240_0.00075.zip
+unzip wv_240_0.00075.zip
+rm wv_240_0.00075.zip
 # gdown --id 1vL8vyfJbaj3i91peTu738jq25N-yhsU3
 # gdown --id 1MQjcRLBCJsdk3AyCBWfAkltzRTHhI9ED
 # unzip word2vec_news.model.wv.vectors.zip
 # rm word2vec_news.model.wv.vectors.zip
 
-# cd ".."
+cd ".."
