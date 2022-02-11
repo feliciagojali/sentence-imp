@@ -17,9 +17,9 @@ if [ ! -d $RAW_PATH ]; then
 fi
 
 cd $RAW_PATH
-gdown --id 1NtS61Uzy-SCaJQ3FksgYFlMU04sKHT3y
-unzip summary_corpus.zip
-rm summary_corpus.zip
+# gdown --id 1NtS61Uzy-SCaJQ3FksgYFlMU04sKHT3y
+# unzip summary_corpus.zip
+# rm summary_corpus.zip
 
 
 cd ".."
@@ -42,10 +42,10 @@ fi
 cd $PROCESSED_PATH
 
 echo "Downloading processed data (POS Tag)"
-gdown --id 1vL8vyfJbaj3i91peTu738jq25N-yhsU3
-gdown --id 1MQjcRLBCJsdk3AyCBWfAkltzRTHhI9ED
-unzip word2vec_news.model.wv.vectors.zip
-rm word2vec_news.model.wv.vectors.zip
+# gdown --id 1vL8vyfJbaj3i91peTu738jq25N-yhsU3
+# gdown --id 1MQjcRLBCJsdk3AyCBWfAkltzRTHhI9ED
+# unzip word2vec_news.model.wv.vectors.zip
+# rm word2vec_news.model.wv.vectors.zip
 
 
 cd ".."
