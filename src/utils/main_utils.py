@@ -1,7 +1,6 @@
 from anytree import Node, RenderTree
 import pickle, re, stanfordnlp
-from features.models import Sentence
-from features.models import Token
+from ..features import Sentence, Token
 import networkx as nx
 import ast
 exception_pos_tags = ["PUNCT", "SYM", "X"]
