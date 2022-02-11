@@ -31,6 +31,7 @@ fi
 mkdir -p "./train"
 mkdir -p "./test"
 mkdir -p "/val"
+mkdir -p "/srl"
 
 # cd ".."
 

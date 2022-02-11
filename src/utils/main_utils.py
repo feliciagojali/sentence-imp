@@ -3,7 +3,7 @@ import pickle, re, stanfordnlp
 from features.models import Sentence
 from features.models import Token
 import networkx as nx
-
+import ast
 exception_pos_tags = ["PUNCT", "SYM", "X"]
 
 def initialize_stanford_nlp():
@@ -15,29 +15,26 @@ def print_tree(root):
         print("%s%s" % (pre, node.name))
 
 
-def preprocess(content):
-    result = content.replace('“', '"').replace('”', '"').replace("‘", "'").replace("’", "'").replace("–", "-") # replace non-ascii double and single quote
-    result = re.sub(r"[^\x00-\x7f]", " ", result) # delete non ascii character
-    # result = re.sub(r'"[^"]+"[^\."\n]*\.', '', result) # remove quoted sentence
-    result = result.replace('"', '').replace("'", "") # remove quote
-    result = re.sub(r'"[^"]+"', '', result) # remove quoted sentence
-    result = re.sub(r"\.\s+((\([^\)]+\)\s+\[[^\]]+\])|(\([^\)]+\)))", ".", result) # delete author and recommendation at the end of paragraph
-    result = result.replace("--", " ") # delete double dash
+def filter_article(sent):
+    result = re.sub('^.? ?[Ll][iI][pP][Uu][Tt][Aa][Nn]( . )? ?6? . [cC]om [.,] [a-zA-Z ]+ : ', '', sent) # remove liputan6 .com with place
+    result = re.sub('^.? ?[Ll][iI][pP][Uu][Tt][Aa][Nn]( . )? ?6? . [cC]om [.,] ', '', result) # remove liputan6 .com only
+    result = re.sub('^.? ?[Ll][iI][pP][Uu][Tt][Aa][Nn]( . )? ?6? . [cC]om [a-zA-Z ]+ : ', '', result) # remove liputan6 .com only
+    result = re.sub('^.? ?[Ll][iI][pP][Uu][Tt][Aa][Nn]( . )? ?6? , [a-zA-Z ]+ : ', '', result) # remove liputan6 .com only
+    result = re.sub('^[a-zA-Z]+ : [Ll][iI][pP][Uu][Tt][Aa][Nn]( . )? ?6? . [Cc]om , [a-zA-Z ]+ : ', '', result) # remove liputan6 .com only
+    result = re.sub('[Ll][iI][pP][Uu][Tt][Aa][Nn]( . )? ?6? . [cC]om , [a-zA-Z ]+ : ', '', result) # remove liputan6 .com only
+    result = re.sub(r"(/[a-z]*)?&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-fA-F]{1,6}) ;", "", result) # remove HTML entites
+    result = re.sub(r"\.\s+((\([^\)]+\)\s+\[[^\]]+\])|(\([^\)]+\)))", "", result) # delete author and recommendation at the end of paragraph   
     return result
 
-def preprocess_summary(content):
-#     result = preprocess(content)
-    result = content.replace('“', '"').replace('”', '"').replace("‘", "'").replace("’", "'").replace("–", "-") # replace non-ascii double and single quote
-    result = re.sub(r"[^\x00-\x7f]", " ", result) # delete non ascii character
-    result = re.sub("(\d+)\s((\.)|(,)|(-)|(\/))\s(\d+)", r"\1\2\7", result) # digit with . and , and - and /
-    result = result.replace("--", " ") # delete double dash
-    result = result.replace('"', '').replace("'", "") # remove quote
-    result = result.replace(" .", ".")
-    result = result.replace(" ,", ",")
-    result = result.replace(" - ", "-")
-    # result = result.replace(" / ", "/")    
-    # print(result)
-    return result
+def preprocess(sent):
+    ## Clean Liputan 6 . com
+    if (not isinstance(sent, list)):
+        sent = ast.literal_eval(sent)
+    sents = [' '.join(sen) for sen in sent]
+    sents = [filter_article(s) for s in sents]
+    sentences = [s.split(' ') for s in sents]
+    sentences = [[x for x in sent if x and x != '.'] for sent in sentences]
+    return sentences
 
 def generate_sentence(idx_topic, idx_news, idx_sentence, sentence, len):
     tokens = [Node(Token(int(word.id), word.text, word.upos, word.deprel, word.head)) for word in sentence.words]
@@ -49,17 +46,6 @@ def tokenize(doc, idx_topic, idx_news):
     sentences = [generate_sentence(idx_topic, idx_news, idx, sent, length) for idx, sent in enumerate(doc.sentences)]
     return sentences
 
-def tokenize_summary(doc):
-    sentences = []
-    for sentence in doc.sentences:
-        tokens = []
-        # print("sent: ")
-        for word in sentence.words:
-            # print(word.text)
-            tokens.append(word.text)
-        sentences.append(tokens)
-    return sentences
-    
 def save_object(file_dir, obj):
     file_dest = file_dir + ".dat" 
     with open(file_dest, "wb") as f:
