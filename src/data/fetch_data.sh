@@ -44,10 +44,9 @@ fi
 cd $PROCESSED_PATH
 
 echo "Downloading processed data (POS Tag)"
-# gdown --id 1vL8vyfJbaj3i91peTu738jq25N-yhsU3
-# gdown --id 1MQjcRLBCJsdk3AyCBWfAkltzRTHhI9ED
-# unzip word2vec_news.model.wv.vectors.zip
-# rm word2vec_news.model.wv.vectors.zip
+# gdown --id 1-0VxyzbiQpgkakAK9MTduhFUPjHdiTcZ
+# unzip nlp_pos_tag.zip
+# rm nlp_pos_tag.zip
 
 
 cd ".."
@@ -62,9 +61,9 @@ echo "Downloading pretrained models"
 gdown --id 1-BDiBCLeBRDh7ue2IZhrU06Lfju3VsYm
 unzip wv_240_0.00075.zip
 rm wv_240_0.00075.zip
-# gdown --id 1vL8vyfJbaj3i91peTu738jq25N-yhsU3
-# gdown --id 1MQjcRLBCJsdk3AyCBWfAkltzRTHhI9ED
-# unzip word2vec_news.model.wv.vectors.zip
-# rm word2vec_news.model.wv.vectors.zip
 
+gdown --id 1vL8vyfJbaj3i91peTu738jq25N-yhsU3
+gdown --id 1MQjcRLBCJsdk3AyCBWfAkltzRTHhI9ED
+unzip word2vec_news.model.wv.vectors.zip
+rm word2vec_news.model.wv.vectors.zip
 cd ".."
