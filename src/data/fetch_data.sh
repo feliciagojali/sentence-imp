@@ -33,15 +33,33 @@ mkdir -p "./test"
 mkdir -p "/val"
 mkdir -p "/srl"
 
-# cd ".."
+cd ".."
 
-# if [ ! -d $PRETRAINED_PATH ]; then
-#   mkdir -p $PRETRAINED_PATH
-# fi
+if [ ! -d $PROCESSED_PATH ]; then
+  mkdir -p $PROCESSED_PATH
+fi
 
-# cd $PRETRAINED_PATH
+cd $PROCESSED_PATH
 
-# echo "Downloading pretrained models and data"
+echo "Downloading processed data (POS Tag)"
+gdown --id 1vL8vyfJbaj3i91peTu738jq25N-yhsU3
+gdown --id 1MQjcRLBCJsdk3AyCBWfAkltzRTHhI9ED
+unzip word2vec_news.model.wv.vectors.zip
+rm word2vec_news.model.wv.vectors.zip
+
+
+cd ".."
+
+if [ ! -d $PRETRAINED_PATH ]; then
+  mkdir -p $PRETRAINED_PATH
+fi
+
+cd $PRETRAINED_PATH
+
+echo "Downloading pretrained models"
+gdown --id 1-BDiBCLeBRDh7ue2IZhrU06Lfju3VsYm
+unzip w_240_0.00075.zip
+rm w_240_0.00075.zip
 # gdown --id 1vL8vyfJbaj3i91peTu738jq25N-yhsU3
 # gdown --id 1MQjcRLBCJsdk3AyCBWfAkltzRTHhI9ED
 # unzip word2vec_news.model.wv.vectors.zip
