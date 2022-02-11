@@ -37,8 +37,6 @@ mkdir -p "./srl"
 
 cd ".."
 
-cd ".."
-
 if [ ! -d $PROCESSED_PATH ]; then
   mkdir -p $PROCESSED_PATH
 fi
