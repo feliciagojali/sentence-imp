@@ -1,13 +1,10 @@
 from anytree import Node, RenderTree
-import pickle, re, stanfordnlp
+import pickle, re
 from ..features import Sentence, Token
 import networkx as nx
 import ast
 exception_pos_tags = ["PUNCT", "SYM", "X"]
 
-def initialize_stanford_nlp():
-    nlp = stanfordnlp.Pipeline(lang="id", treebank="id_gsd")
-    return nlp
 
 def print_tree(root):
     for pre, fill, node in RenderTree(root):
