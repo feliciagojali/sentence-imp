@@ -1,10 +1,42 @@
-from anytree import Node, RenderTree
-import pickle, re
-from features import Sentence, Token
-import networkx as nx
 import ast
-exception_pos_tags = ["PUNCT", "SYM", "X"]
+import json
+import stanza
+import pickle, re
+import pandas as pd
+import networkx as nx
+from tqdm import tqdm
+from ..models import Sentence, Token
+from anytree import Node, RenderTree
 
+tqdm.pandas()
+stanza.download("id")
+exception_pos_tags = ["PUNCT", "SYM", "X"]
+raw_data_path = '/data/raw/'
+
+def initialize_nlp():
+    nlp = stanza.Pipeline(lang="id", tokenize_pretokenized=True)
+    return nlp
+
+def read_data(types, config):
+    df = pd.read_csv(raw_data_path + types + '_' + config['data_path'])
+    df['article'] = df['article'].progress_apply(lambda x : ast.literal_eval(x))
+    df['summary'] = df['summary'].progress_apply(lambda x : ast.literal_eval(x))
+    df['title'] = df['title'].progress_apply(lambda x : ast.literal_eval(x))
+
+    return df['article'], df['summary'], df['title']
+
+def return_config(arg):
+    config = arg[1]
+    filename = './configurations.json'
+    f = open(filename)
+    all_config = json.load(f)
+
+    try:
+        config = all_config[config]
+    except:
+        config = all_config['default']
+
+    return config
 
 def print_tree(root):
     for pre, fill, node in RenderTree(root):
@@ -28,8 +60,8 @@ def preprocess(sent):
         sent = ast.literal_eval(sent)
     sents = [' '.join(sen) for sen in sent]
     sents = [filter_article(s) for s in sents]
-    sentences = [s.split(' ') for s in sents]
-    sentences = [[x for x in sent if x and x != '.'] for sent in sentences]
+    sentences = [s.split(' ') for s in sents if s != '.' ]
+    sentences = [[x for x in sent if x and x != '.' ] for sent in sentences]
     return sentences
 
 def generate_sentence(idx_topic, idx_news, idx_sentence, sentence, len):
@@ -41,6 +73,10 @@ def tokenize(doc, idx_topic, idx_news):
     length = len(doc.sentences)
     sentences = [generate_sentence(idx_topic, idx_news, idx, sent, length) for idx, sent in enumerate(doc.sentences)]
     return sentences
+
+def pos_tag(nlp, sent, idx):
+    doc = nlp(sent)
+    return tokenize(doc, idx, idx)
 
 def save_object(file_dir, obj):
     file_dest = file_dir + ".dat" 
@@ -70,150 +106,3 @@ def load_corpus(corpus_topics, corpus_pas, sentence_similarity_table, corpus_sum
         # corpus_summaries_200[corpus_name] = load_object("../../temporary_data/corpus_summaries_200/" + corpus_name)
         graph_docs[corpus_name] = load_graph("../../temporary_data/graph_docs/" + corpus_name)
 
-# MMR
-def get_argument_tokens(arguments):
-    tokens = []
-    for argument in arguments:
-        tokens.extend(argument)
-    return tokens
-
-def get_argument_tokens_without_punctuation(pas_tokens, arguments):
-    tokens = []
-    for argument in arguments:
-    	for word in argument:
-            if (pas_tokens[word].name.pos_tag not in exception_pos_tags):
-                tokens.append(word)
-    return tokens
-
-def get_tokens(extracted_pas):
-    tokens = []
-    tokens.extend(get_argument_tokens(extracted_pas.pas.agent))
-    tokens.extend(get_argument_tokens(extracted_pas.pas.verb))
-    tokens.extend(get_argument_tokens(extracted_pas.pas.patient))
-    tokens.extend(get_argument_tokens(extracted_pas.pas.location))
-    tokens.extend(get_argument_tokens(extracted_pas.pas.temporal))
-    tokens.extend(get_argument_tokens(extracted_pas.pas.goal))
-    tokens.extend(get_argument_tokens(extracted_pas.pas.cause))
-    tokens.extend(get_argument_tokens(extracted_pas.pas.extent))
-    tokens.extend(get_argument_tokens(extracted_pas.pas.adverbial))
-    tokens.extend(get_argument_tokens(extracted_pas.pas.modal))
-    tokens.extend(get_argument_tokens(extracted_pas.pas.negation))
-    tokens.sort()
-    return tokens
-
-def get_tokens_without_punctuation(extracted_pas):
-    tokens = []
-    tokens.extend(get_argument_tokens_without_punctuation(extracted_pas.tokens, extracted_pas.pas.agent))
-    tokens.extend(get_argument_tokens_without_punctuation(extracted_pas.tokens, extracted_pas.pas.verb))
-    tokens.extend(get_argument_tokens_without_punctuation(extracted_pas.tokens, extracted_pas.pas.patient))
-    tokens.extend(get_argument_tokens_without_punctuation(extracted_pas.tokens, extracted_pas.pas.location))
-    tokens.extend(get_argument_tokens_without_punctuation(extracted_pas.tokens, extracted_pas.pas.temporal))
-    tokens.extend(get_argument_tokens_without_punctuation(extracted_pas.tokens, extracted_pas.pas.goal))
-    tokens.extend(get_argument_tokens_without_punctuation(extracted_pas.tokens, extracted_pas.pas.cause))
-    tokens.extend(get_argument_tokens_without_punctuation(extracted_pas.tokens, extracted_pas.pas.extent))
-    tokens.extend(get_argument_tokens_without_punctuation(extracted_pas.tokens, extracted_pas.pas.adverbial))
-    tokens.extend(get_argument_tokens_without_punctuation(extracted_pas.tokens, extracted_pas.pas.modal))
-    tokens.extend(get_argument_tokens_without_punctuation(extracted_pas.tokens, extracted_pas.pas.negation))
-    tokens.sort()
-    return tokens
-  
-def get_subjects_tokens(extracted_pas):
-    tokens = get_argument_tokens(extracted_pas.pas.agent)
-    tokens.sort()
-    return tokens
-
-def get_subjects(extracted_pas):
-    tokens = get_subjects_tokens(extracted_pas)
-
-    subjects = [extracted_pas.tokens[token].name.text for token in tokens]
-    return " ".join(subjects)
-
-def get_first_subject_tokens(extracted_pas):
-    tokens = []
-    if (len(extracted_pas.pas.subjects) > 0):
-        for subj in extracted_pas.pas.subjects[0]:
-            if extracted_pas.tokens[subj].name.pos_tag not in exception_pos_tags:
-                tokens.append(subj)
-
-    return tokens
-
-def get_first_subject(extracted_pas):
-    tokens = get_first_subject_tokens(extracted_pas)
-
-    subjects = [extracted_pas.tokens[token].name.text for token in tokens]
-    return " ".join(subjects)
-
-def get_tokens_without_first_subject(extracted_pas):
-    tokens = []
-    if (len(extracted_pas.pas.subjects) > 1):
-        tokens.extend(get_argument_tokens(extracted_pas.pas.subjects[1:len(extracted_pas.pas.subjects)]))
-
-    tokens.extend(get_argument_tokens(extracted_pas.pas.predicates))
-    tokens.extend(get_argument_tokens(extracted_pas.pas.objects))
-    tokens.extend(get_argument_tokens(extracted_pas.pas.times))
-    tokens.extend(get_argument_tokens(extracted_pas.pas.places))
-    tokens.extend(get_argument_tokens(extracted_pas.pas.explanations))
-    tokens.sort()
-    return tokens
-
-def get_tokens_without_first_subject_without_punctuation(extracted_pas):
-    tokens = []
-    if (len(extracted_pas.pas.subjects) > 1):
-        tokens.extend(get_argument_tokens_without_punctuation(extracted_pas.tokens, extracted_pas.pas.subjects[1:len(extracted_pas.pas.subjects)]))
-
-    tokens.extend(get_argument_tokens_without_punctuation(extracted_pas.tokens, extracted_pas.pas.predicates))
-    tokens.extend(get_argument_tokens_without_punctuation(extracted_pas.tokens, extracted_pas.pas.objects))
-    tokens.extend(get_argument_tokens_without_punctuation(extracted_pas.tokens, extracted_pas.pas.times))
-    tokens.extend(get_argument_tokens_without_punctuation(extracted_pas.tokens, extracted_pas.pas.places))
-    tokens.extend(get_argument_tokens_without_punctuation(extracted_pas.tokens, extracted_pas.pas.explanations))
-    tokens.sort()
-    return tokens
-
-def print_argument(title, subtitle, tokens, arguments):
-    print(title)
-    for idx_argument, argument in enumerate(arguments):
-        print(subtitle + str(idx_argument))
-        for word in argument:
-            print(tokens[word].name)
-    print()
-
-def print_result(extracted_pas):
-    print_argument("Subjek", "Subjek ke: ", extracted_pas.tokens, extracted_pas.pas.subjects)
-    print_argument("Predikat", "Predikat ke: ", extracted_pas.tokens, extracted_pas.pas.predicates)
-    print_argument("Objek", "Objek ke: ", extracted_pas.tokens, extracted_pas.pas.objects)
-    print_argument("Keterangan", "Keterangan ke: ", extracted_pas.tokens, extracted_pas.pas.explanations)
-    print_argument("K. Waktu", "K. Waktu ke: ", extracted_pas.tokens, extracted_pas.pas.times)
-    print_argument("K. Tempat", "K. Tempat ke: ", extracted_pas.tokens, extracted_pas.pas.places)
-
-def print_clean_result(extracted_pas):
-    # print_argument("Subjek", "Subjek ke: ", extracted_pas.tokens, extracted_pas.pas.subjects)
-    print_argument("Subjek (clean)", "Subjek ke: ", extracted_pas.tokens, extracted_pas.clean_pas.subjects)
-    
-    # print_argument("Predikat", "Predikat ke: ", extracted_pas.tokens, extracted_pas.pas.predicates)
-    print_argument("Predikat (clean)", "Predikat ke: ", extracted_pas.tokens, extracted_pas.clean_pas.predicates)
-    
-    # print_argument("Objek", "Objek ke: ", extracted_pas.tokens, extracted_pas.pas.objects)
-    print_argument("Objek (clean)", "Objek ke: ", extracted_pas.tokens, extracted_pas.clean_pas.objects)
-    
-    # print_argument("Keterangan", "Keterangan ke: ", extracted_pas.tokens, extracted_pas.pas.explanations)
-    print_argument("Keterangan (clean)", "Keterangan ke: ", extracted_pas.tokens, extracted_pas.clean_pas.explanations)
-    
-    # print_argument("K. Waktu", "K. Waktu ke: ", extracted_pas.tokens, extracted_pas.pas.times)
-    print_argument("K. Waktu (clean)", "K. Waktu ke: ", extracted_pas.tokens, extracted_pas.clean_pas.times)
-    
-    # print_argument("K. Tempat", "K. Tempat ke: ", extracted_pas.tokens, extracted_pas.pas.places)
-    print_argument("K. Tempat (clean)", "K. Tempat ke: ", extracted_pas.tokens, extracted_pas.clean_pas.places)
-
-def min_start_arg(list_labels) :
-    """
-    Return the minimum element of a sequence.
-    key_func is an optional one-argument ordering function.
-    """
-    
-    minimum = list_labels[0]
-    for item in list_labels :
-        if item[1] < minimum[1] :
-            minimum = item
-
-    min_start = minimum[1]
-    return min_start

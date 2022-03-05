@@ -17,10 +17,9 @@ if [ ! -d $RAW_PATH ]; then
 fi
 
 cd $RAW_PATH
-# gdown --id 1NtS61Uzy-SCaJQ3FksgYFlMU04sKHT3y
-# unzip summary_corpus.zip
-# rm summary_corpus.zip
-
+!gdown --id 11JTXoiiZarlnlTXybKxkZlHCkvRbXGXJ
+!gdown --id 1-AdssQnuazF-GOmI_BAsQG98cpBPA9Ym
+!gdown --id 1iRtDVgGrMwnfGxuOf7NUAnANtyVovL83
 
 cd ".."
 
@@ -58,12 +57,9 @@ fi
 cd $PRETRAINED_PATH
 
 echo "Downloading pretrained models"
-gdown --id 1-BDiBCLeBRDh7ue2IZhrU06Lfju3VsYm
-unzip wv_240_0.00075.zip
-rm wv_240_0.00075.zip
-
+gdown --id 1553_9shAUrQpFAB0vqXbQrpHqJvWYgp4
+unzip word2vec-input_sent.txt-s300-c5-w5-e10-SG.model.trainables.syn1neg.zip
+rm word2vec-input_sent.txt-s300-c5-w5-e10-SG.model.trainables.syn1neg.zip
 gdown --id 1vL8vyfJbaj3i91peTu738jq25N-yhsU3
-gdown --id 1MQjcRLBCJsdk3AyCBWfAkltzRTHhI9ED
-unzip word2vec_news.model.wv.vectors.zip
-rm word2vec_news.model.wv.vectors.zip
+
 cd ".."
