@@ -1,6 +1,7 @@
 # span-srl
-spansrl/*
+src/spansrl/*
 data/*
+log/*
 # exception to the rule
 !span-srl/.gitkeep 
 

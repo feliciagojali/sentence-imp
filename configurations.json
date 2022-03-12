@@ -2,19 +2,23 @@
     "default": {
         "srl_labels": ["ARG0","ARG1","ARG2","AM-MOD","AM-ADV","REL","AM-TMP","AM-CAU","AM-LOC","AM-DIR", "AM-MNR","AM-DIS","AM-PRD","ARG3","ARG4","AM-LVB","AM-PRP","AM-COM","AM-GOL","AM-EXT","AM-REC","AM-NEG","AM-ADJ"],
         "max_pred_span": 2,
-        "max_arg_span": 26,
-        "max_predicates": 20,
-        "max_arguments": 614,
+        "max_arg_span": 27,
+        "max_predicates": 77,
+        "max_arguments": 777,
         "max_tokens": 49,
         "max_char": 52,
         "char_list": " 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.,-_()[]{}!?:;#'\"/\\%$`&=*+@^~|",
         "train_data": "/data/raw/batch1.csv",
+        "features": "features_teast.csv",
         "word_emb_path":"data/pretrained/word2vec_news.model",
         "fasttext_emb_path": "data/pretrained/kyubyong.ft.id.bin",
-        "batch_size": 8,
-        "epochs": 60,
+        "w2v_sim_path":"data/pretrained/word2vec-input_sent.txt-s300-c5-w5-e10-SG.model",
+        "ft_sim_path": "data/pretrained/kyubyong.ft.id.bin",
+        "batch_size": 10,
         "use_fasttext": false,
+        "use_pruning": true,
+        "algorithm": "min",
         "data_path": "summary_corpus.csv",
-        "srl_model": "data/pretrained/srl_model"
+        "srl_model": "data/pretrained/full_w2v_bihlstm300_pruning"
     }
 }

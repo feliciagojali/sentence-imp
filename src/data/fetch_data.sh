@@ -1,5 +1,10 @@
 #! /bin/bash
 
+MODEL_PATH="./models"
+if [ ! -d $DATA_PATH ]; then
+  mkdir -p $DATA_PATH
+fi
+
 DATA_PATH="./data"
 if [ ! -d $DATA_PATH ]; then
   mkdir -p $DATA_PATH
@@ -9,7 +14,7 @@ cd $DATA_PATH
 
 RAW_PATH="./raw"
 PRETRAINED_PATH="./pretrained"
-PROCESSED_PATH="./processed"
+RESULTS_PATH="./results"
 FEATURES_PATH="./features"
 
 if [ ! -d $RAW_PATH ]; then
@@ -17,9 +22,9 @@ if [ ! -d $RAW_PATH ]; then
 fi
 
 cd $RAW_PATH
-!gdown --id 11JTXoiiZarlnlTXybKxkZlHCkvRbXGXJ
-!gdown --id 1-AdssQnuazF-GOmI_BAsQG98cpBPA9Ym
-!gdown --id 1iRtDVgGrMwnfGxuOf7NUAnANtyVovL83
+gdown --id 11JTXoiiZarlnlTXybKxkZlHCkvRbXGXJ
+gdown --id 1-AdssQnuazF-GOmI_BAsQG98cpBPA9Ym
+gdown --id 1iRtDVgGrMwnfGxuOf7NUAnANtyVovL83
 
 cd ".."
 
@@ -27,28 +32,12 @@ if [ ! -d $FEATURES_PATH ]; then
   mkdir -p $FEATURES_PATH
 fi
 
-cd $FEATURES_PATH
-
-mkdir -p "./train"
-mkdir -p "./test"
-mkdir -p "./val"
-mkdir -p "./srl"
-
 cd ".."
 
-if [ ! -d $PROCESSED_PATH ]; then
-  mkdir -p $PROCESSED_PATH
+if [ ! -d $RESULTS_PATH ]; then
+  mkdir -p $RESULTS_PATH
 fi
 
-cd $PROCESSED_PATH
-
-echo "Downloading processed data (POS Tag)"
-# gdown --id 1-0VxyzbiQpgkakAK9MTduhFUPjHdiTcZ
-# unzip nlp_pos_tag.zip
-# rm nlp_pos_tag.zip
-
-
-cd ".."
 
 if [ ! -d $PRETRAINED_PATH ]; then
   mkdir -p $PRETRAINED_PATH
@@ -61,5 +50,7 @@ gdown --id 1553_9shAUrQpFAB0vqXbQrpHqJvWYgp4
 unzip word2vec-input_sent.txt-s300-c5-w5-e10-SG.model.trainables.syn1neg.zip
 rm word2vec-input_sent.txt-s300-c5-w5-e10-SG.model.trainables.syn1neg.zip
 gdown --id 1vL8vyfJbaj3i91peTu738jq25N-yhsU3
-
+gdown --id 1MQjcRLBCJsdk3AyCBWfAkltzRTHhI9ED
+unzip word2vec_news.model.wv.vectors.zip
+rm word2vec_news.model.wv.vectors.zip
 cd ".."

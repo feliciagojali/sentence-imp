@@ -10,3 +10,5 @@ tensorflow==2.7.0
 torch==1.10.0
 tqdm==4.62.3
 transformers==4.15.0
+gdown==4.4.0
+rouge==1.0.1
