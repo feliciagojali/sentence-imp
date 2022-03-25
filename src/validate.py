@@ -66,7 +66,7 @@ def main():
             corpus_pas = [predict_srl(doc, srl_data, srl_model, config) for doc in tqdm(current_corpus)]
         
         ## Filter incomplete PAS
-        corpus_pas = [[filter_incomplete_pas(pas) for pas in pas_doc]for pas_doc in corpus_pas]
+        corpus_pas = [[filter_incomplete_pas(pas,pos_tag_sent ) for pas, pos_tag_sent in zip(pas_doc, pos_tag_sent)] for pas_doc, pos_tag_sent in zip(corpus_pas, corpus_pos_tag)]
         
         ## Cleaning when there is no SRL 
         print('Cleaning empty SRL...')
