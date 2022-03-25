@@ -33,22 +33,20 @@ def predict_srl(doc, srl_data, srl_model, config):
     
     return res
 
-def filter_incomplete_pas(pas_list):
+def filter_incomplete_pas(pas_list, pos_tag_sent):
     filtered = []
-    tokens = []
     for pas in pas_list:
         arg_list = [p[2] for p in pas['args']]
         # must have core arguments conditions
         if(not bool(set(arg_list) & set(core_labels))):
             continue
-        pred = pas['id_pred']
-        if(bool(set(pred) & set(tokens))):
+
+        # check if predicate by pos tag
+        pred_id = pas['id_pred'][0]
+        if (pos_tag_sent.tokens[pred_id].name.pos_tag != 'VERB'):
             continue
-        for arg in pas['args']:
-            endpoints = [x for x in range(arg[0], arg[1]+1)]
-            tokens.extend(endpoints)
-        filtered.append(pas)
-        
+
+
     return filtered
             
 def filter_pas(pas_list, pos_tag_sent):

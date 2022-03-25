@@ -2,6 +2,7 @@
 src/spansrl/*
 data/*
 log/*
+__autograph*.py
 # exception to the rule
 !span-srl/.gitkeep 
 
