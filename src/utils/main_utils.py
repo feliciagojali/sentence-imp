@@ -61,6 +61,20 @@ def return_config(arg):
 
     return config
 
+def prepare_for_sent_tokenize(sents):
+    reg = '[A-Z] [.] *|[0-9]+ [.] |[?] [,"]|No [.] [0-9]+|[Jj]ln [.]|[Jj]alan [.]'
+    questReg = '["].+ [.].+["]'
+    questSubs = [re.findall(questReg, s) for s in sents]
+    newQuestSubs = [[re.sub(" [.] ",".", s) for s in sub] for sub in questSubs]
+    subs = [re.findall(reg, s) for s in sents]
+    newSubs = [[re.sub("\s", "", s) for s in sub] for sub in subs]
+    for i in range(len(sents)):
+        o = subs[i] + questSubs[i]
+        n = newSubs[i] + newQuestSubs[i]
+        for old, new in zip(o, n):
+            sents[i]= sents[i].replace(old, new)
+    return sents
+
 def filter_article(sent):
     result = re.sub('^.? ?[Ll][iI][pP][Uu][Tt][Aa][Nn]( . )? ?6? . [cC]om [.,] [a-zA-Z ]+ : ', '', sent) # remove liputan6 .com with place
     result = re.sub('^.? ?[Ll][iI][pP][Uu][Tt][Aa][Nn]( . )? ?6? . [cC]om [.,] ', '', result) # remove liputan6 .com only
@@ -70,28 +84,22 @@ def filter_article(sent):
     result = re.sub('[Ll][iI][pP][Uu][Tt][Aa][Nn]( . )? ?6? . [cC]om , [a-zA-Z ]+ : ', '', result) # remove liputan6 .com only
     result = re.sub(r"(/[a-z]*)?&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-fA-F]{1,6}) ;", "", result) # remove HTML entites
     result = re.sub(r"\.\s+((\([^\)]+\)\s+\[[^\]]+\])|(\([^\)]+\)))", "", result) # delete author and recommendation at the end of paragraph   
-    res = re.findall('[.?!]* [(]+ ([a-zA-Z]+ )+[)]+$', result)
-    if ('.' in res):
-        result = re.sub('[.?!]* [(]+ ([a-zA-Z/]+ )+[)]+$', ".")
-    else:
-        result = re.sub(' [.?!]* [(]+ ([a-zA-Z/]+ )+[)]+$', "")
+    result = re.sub("[[] Baca : ", ". ", result) # delete author and recommendation at the end of paragraph   
+    result = re.sub('[(] ([a-zA-Z/]+ )+[)]( [.])*$', "", result)
     return result
 
 def preprocess(sent):
-    ## Clean Liputan 6 . com
     if (not isinstance(sent, list)):
         sent = ast.literal_eval(sent)
     sents = [' '.join(sen) for sen in sent]
-    reg = '([A-Z] [.])+'
-    subs = [re.findall(reg, s) for s in sents]
-    subs_ = [[re.sub("\s", "", s) for s in sent] for sent in sents]
-    sents = [[re.sub(old_sub, new_sub, s) for old_sub, new_sub in zip(subs, subs_) for s in sent] for sent in sents]
+    sents = prepare_for_sent_tokenize(sents)
     sents = [sent_tokenize(s) for s in sents]
     sents = [item for sublist in sents for item in sublist]
-    sents = [filter_article(s) for s in sents]
+    sents = [filter_article(s) for  s in (sents)]
+    sents = [re.sub("[.]"," . ", sent) for sent in sents]
     sentences = [s.split(' ') for s in sents if s != '.' ]
     sentences = [[x for x in sent if x] for sent in sentences]
-    sentences = [x for x in sentences if x != ['.']]
+    sentences = [x for x in sentences if len(x) > 1]
     return sentences
 
 def generate_sentence(idx_topic, idx_news, idx_sentence, sentence, len, isTraining=False):
