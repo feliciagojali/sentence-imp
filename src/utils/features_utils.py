@@ -3,13 +3,11 @@ import string
 import os.path
 import pandas as pd
 from collections import Counter
-from .pas_utils import get_flatten_pas, get_flatten_arguments
 from gensim.models import Word2Vec, fasttext
+from .pas_utils import get_flatten_pas, get_flatten_arguments
+from .variables import verb_pos_tags, noun_pos_tags, features_name, features_path
 
-verb_pos_tags = ["VERB"]
-noun_pos_tags = ["NOUN"]
-features_name = ["fst_feature", "p2p_feature", "length_feature", "num_feature", "noun_verb_feature", "pnoun_feature", "location_feature", "temporal_feature", "max_doc_similarity_feature", "avg_doc_similarity_feature", "min_doc_similarity_feature","position_feature", "title_feature", "target"]
-features_path = 'data/features/'
+
 sys.setrecursionlimit(1500000)
 
 def prepare_df(ext_pas_list, config, types, start_idx):

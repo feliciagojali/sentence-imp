@@ -14,15 +14,10 @@ from models import Sentence, Token, NewPAS
 from .features_utils import create_mask_arr
 from nltk.tokenize import sent_tokenize, word_tokenize
 from .pas_utils import get_flatten_pas, get_flatten_arguments
+from .variables import models_path, raw_data_path, exception_pos_tags, rouge_metrics, metrics, results_path
 
 tqdm.pandas()
 stanza.download("id", model_dir='/raid/data/m13518101')
-exception_pos_tags = ["PUNCT", "SYM", "X"]
-rouge_metrics = ['rouge-1', 'rouge-2', 'rouge-l']
-metrics = ['f', 'r', 'p']
-raw_data_path = 'data/raw/'
-models_path = 'models/linearRegression_spansrl_'
-results_path = 'data/results/'
 
 def initialize_nlp(isTraining=False):
     if (not isTraining):
@@ -75,6 +70,11 @@ def filter_article(sent):
     result = re.sub('[Ll][iI][pP][Uu][Tt][Aa][Nn]( . )? ?6? . [cC]om , [a-zA-Z ]+ : ', '', result) # remove liputan6 .com only
     result = re.sub(r"(/[a-z]*)?&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-fA-F]{1,6}) ;", "", result) # remove HTML entites
     result = re.sub(r"\.\s+((\([^\)]+\)\s+\[[^\]]+\])|(\([^\)]+\)))", "", result) # delete author and recommendation at the end of paragraph   
+    res = re.findall('[.?!]* [(]+ ([a-zA-Z]+ )+[)]+$', result)
+    if ('.' in res):
+        result = re.sub('[.?!]* [(]+ ([a-zA-Z/]+ )+[)]+$', ".")
+    else:
+        result = re.sub(' [.?!]* [(]+ ([a-zA-Z/]+ )+[)]+$', "")
     return result
 
 def preprocess(sent):
@@ -82,6 +82,10 @@ def preprocess(sent):
     if (not isinstance(sent, list)):
         sent = ast.literal_eval(sent)
     sents = [' '.join(sen) for sen in sent]
+    reg = '([A-Z] [.])+'
+    subs = [re.findall(reg, s) for s in sents]
+    subs_ = [[re.sub("\s", "", s) for s in sent] for sent in sents]
+    sents = [[re.sub(old_sub, new_sub, s) for old_sub, new_sub in zip(subs, subs_) for s in sent] for sent in sents]
     sents = [sent_tokenize(s) for s in sents]
     sents = [item for sublist in sents for item in sublist]
     sents = [filter_article(s) for s in sents]

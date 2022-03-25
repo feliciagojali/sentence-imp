@@ -1,10 +1,9 @@
 import tensorflow as tf
+from .variables import core_labels
 from models import ExtractedPAS, NewPAS
 from spansrl.src.features import SRLData
 from tensorflow.keras.models import load_model
 from anytree import LevelOrderIter, RenderTree
-
-core_labels = ['ARG0','ARG1','ARG2', 'ARG3', 'ARG4', 'ARG5']
 tf.random.set_seed(42)
 
 def load_srl_model(config):
