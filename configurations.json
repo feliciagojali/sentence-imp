@@ -8,8 +8,7 @@
         "max_tokens": 49,
         "max_char": 52,
         "char_list": " 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.,-_()[]{}!?:;#'\"/\\%$`&=*+@^~|",
-        "train_data": "/data/raw/batch1.csv",
-        "features": "features_teast.csv",
+        "features": "noincomplete.csv",
         "word_emb_path":"data/pretrained/word2vec_news.model",
         "fasttext_emb_path": "data/pretrained/kyubyong.ft.id.bin",
         "w2v_sim_path":"data/pretrained/word2vec-input_sent.txt-s300-c5-w5-e10-SG.model",
@@ -17,6 +16,7 @@
         "batch_size": 10,
         "use_fasttext": false,
         "use_pruning": true,
+        "one_pas_only": false,
         "algorithm": "min",
         "data_path": "summary_corpus.csv",
         "srl_model": "data/pretrained/full_w2v_bihlstm300_pruning"

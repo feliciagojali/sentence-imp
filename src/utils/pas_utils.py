@@ -2,7 +2,9 @@ import tensorflow as tf
 from models import ExtractedPAS, NewPAS
 from spansrl.src.features import SRLData
 from tensorflow.keras.models import load_model
+from anytree import LevelOrderIter, RenderTree
 
+core_labels = ['ARG0','ARG1','ARG2', 'ARG3', 'ARG4', 'ARG5']
 tf.random.set_seed(42)
 
 def load_srl_model(config):
@@ -30,6 +32,43 @@ def predict_srl(doc, srl_data, srl_model, config):
         res =  srl_data.convert_result_to_readable(pred)
     
     return res
+
+def filter_incomplete_pas(pas_list):
+    filtered = []
+    tokens = []
+    for pas in pas_list:
+        arg_list = [p[2] for p in pas['args']]
+        # must have core arguments conditions
+        if(not bool(set(arg_list) & set(core_labels))):
+            continue
+        pred = pas['id_pred']
+        if(bool(set(pred) & set(tokens))):
+            continue
+        for arg in pas['args']:
+            endpoints = [x for x in range(arg[0], arg[1]+1)]
+            tokens.extend(endpoints)
+        filtered.append(pas)
+        
+    return filtered
+            
+def filter_pas(pas_list, pos_tag_sent):
+    if len(pas_list) == 1:
+        return pas_list
+    pred_list = [node.name.position - 1 for node in LevelOrderIter(pos_tag_sent.root) if node.name.pos_tag == 'VERB' ]
+    i = 0
+    chosen = []
+    while(len(chosen) == 0 and i < len(pred_list)):
+        pred_id = pred_list[i]
+        chosen = [pas for pas in pas_list if pas['id_pred'][0] == pred_id]
+        i+=1
+    # If not defined as verb in pos tag then consider all tokens
+    if (len(chosen) == 0):
+        token_list = [node.name.position - 1 for node in LevelOrderIter(pos_tag_sent.root)]
+        while(len(chosen) == 0 and i < len(token_list)):
+            pred_id = token_list[i]
+            chosen = [pas for pas in pas_list if pas['id_pred'][0] == pred_id]
+            i+=1
+    return chosen
 
 def convert_PAS(pas, pos):
     new_pas = NewPAS()

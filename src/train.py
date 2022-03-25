@@ -7,7 +7,7 @@ import tensorflow as tf
 from tqdm import tqdm
 from sklearn.linear_model import LinearRegression
 from utils.features_utils import compute_target, load_sim_emb, generate_sim_table, generate_features, generate_target_features, load_train_df, prepare_df, prepare_features
-from utils.pas_utils import convert_to_PAS_models, convert_to_extracted_PAS, get_sentence, load_srl_model, predict_srl
+from utils.pas_utils import convert_to_PAS_models, convert_to_extracted_PAS, get_sentence, load_srl_model, predict_srl, filter_incomplete_pas
 from utils.main_utils import initialize_nlp, initialize_rouge, read_data, return_config, preprocess, prepare_df_result, pos_tag
 
 model_path = 'models/'
@@ -34,6 +34,8 @@ def main():
     
     total_no_srl = 0
     loaded = False
+    full_ext_pas_list = []
+    full_start = idx
     while (idx < len(corpus)):
         start = time.time()
 
@@ -51,8 +53,8 @@ def main():
         with torch.cuda.device(0):
             print('POS Tagging...')
             if (not loaded):
-                nlp = initialize_nlp()
-            corpus_pos_tag = [pos_tag(nlp, sent, i+s) for i, sent in tqdm(enumerate(current_corpus))]
+                nlp = initialize_nlp(True)
+            corpus_pos_tag = [pos_tag(nlp, sent, i+s, True) for i, sent in tqdm(enumerate(current_corpus))]
             torch.cuda.empty_cache()
 
         # SRL
@@ -61,6 +63,10 @@ def main():
             if (not loaded):
                 srl_model, srl_data = load_srl_model(config)
             corpus_pas = [predict_srl(doc, srl_data, srl_model, config) for doc in tqdm(current_corpus)]
+        
+        ## Filter incomplete PAS
+        corpus_pas = [[filter_incomplete_pas(pas) for pas in pas_doc]for pas_doc in corpus_pas]
+    
         ## Cleaning when there is no SRL
         print('Cleaning empty SRL...')
         empty_ids = []
@@ -80,7 +86,8 @@ def main():
         # Convert to PAS Object
         pas_list = [convert_to_PAS_models(pas, pos) for pas, pos in zip(corpus_pas, corpus_pos_tag)]
         ext_pas_list = [convert_to_extracted_PAS(pas,sent) for pas, sent in zip(corpus_pos_tag, pas_list)]
-        ext_pas_flatten = [np.concatenate([sent.pas for sent in doc]) for doc in ext_pas_list]
+        ext_pas_flatten = [np.concatenate([sent.pas for sent in doc]) if doc != [] else [] for doc in ext_pas_list]
+        
         
         # Get sentence
         pas_sentences = [[get_sentence(extracted_pas) for extracted_pas in doc] for doc in ext_pas_list]
@@ -95,15 +102,18 @@ def main():
         sim_table = generate_sim_table(ext_pas_list, ext_pas_flatten, [w2v, ft])
         generate_features(ext_pas_list, sim_table, current_title)
         generate_target_features(ext_pas_list, target)
-
+        full_ext_pas_list.extend(ext_pas_list)
         print('Convert to DF...')
-        prepare_df(ext_pas_list, config, 'train', s)
+        if (idx % 500 == 0):
+            prepare_df(full_ext_pas_list, config, 'train', full_start)
+            full_start = idx+batch
+            full_ext_pas_list = []
         print('waktu 10 data = '+str(time.time() - start))
 
         idx += batch
         for i in no_found:
             print(i)
-
+    prepare_df(full_ext_pas_list, config, 'train', full_start)
     reg_min = LinearRegression()
     reg_avg = LinearRegression()
 
@@ -111,9 +121,10 @@ def main():
 
     reg_min.fit(features_min, target)
     reg_avg.fit(features_avg, target)
-
-    pickle.dump(reg_min, open(model_path+'linearRegression_spansrl_min.sav', 'wb'))
-    pickle.dump(reg_avg, open(model_path+'linearRegression_spansrl_avg.sav', 'wb'))
+    
+    print('Dumping model')
+    pickle.dump(reg_min, open(model_path+'linearRegression_spansrl_min_noincomplete.sav', 'wb'))
+    pickle.dump(reg_avg, open(model_path+'linearRegression_spansrl_avg_noincomplete.sav', 'wb'))
 
 if __name__ == "__main__":
     main()

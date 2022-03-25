@@ -24,8 +24,11 @@ raw_data_path = 'data/raw/'
 models_path = 'models/linearRegression_spansrl_'
 results_path = 'data/results/'
 
-def initialize_nlp():
-    nlp = stanza.Pipeline(lang="id", tokenize_pretokenized=True, dir='/raid/data/m13518101', processors='pos,tokenize', pos_batch_size=90)
+def initialize_nlp(isTraining=False):
+    if (not isTraining):
+        nlp = stanza.Pipeline(lang="id", tokenize_pretokenized=True, dir='/raid/data/m13518101', pos_batch_size=500)
+    else:
+        nlp = stanza.Pipeline(lang="id", tokenize_pretokenized=True, dir='/raid/data/m13518101', pos_batch_size=500, processors='tokenize, pos')
     return nlp
 
 def initialize_rouge():
@@ -44,9 +47,9 @@ def preprocess_title(url):
     
 def read_data(types, config):
     df = pd.read_csv(raw_data_path + types + '_' + config['data_path'], index_col=0)
-    df['article'] = df['article'][0:1000].progress_apply(lambda x : ast.literal_eval(x))
-    df['summary'] = df['summary'][0:1000].progress_apply(lambda x : ast.literal_eval(x))
-    df['title'] = df['title'][0:1000].progress_apply(lambda x : ast.literal_eval(x))
+    df['article'] = df['article'].progress_apply(lambda x : ast.literal_eval(x))
+    df['summary'] = df['summary'].progress_apply(lambda x : ast.literal_eval(x))
+    df['title'] = df['title'].progress_apply(lambda x : ast.literal_eval(x))
 
     return df['article'], df['summary'], df['title']
 
@@ -79,25 +82,34 @@ def preprocess(sent):
     if (not isinstance(sent, list)):
         sent = ast.literal_eval(sent)
     sents = [' '.join(sen) for sen in sent]
+    sents = [sent_tokenize(s) for s in sents]
+    sents = [item for sublist in sents for item in sublist]
     sents = [filter_article(s) for s in sents]
     sentences = [s.split(' ') for s in sents if s != '.' ]
     sentences = [[x for x in sent if x] for sent in sentences]
     sentences = [x for x in sentences if x != ['.']]
     return sentences
 
-def generate_sentence(idx_topic, idx_news, idx_sentence, sentence, len):
+def generate_sentence(idx_topic, idx_news, idx_sentence, sentence, len, isTraining=False):
     tokens = [Node(Token(int(word.id), word.text, word.upos, word.deprel, word.head)) for word in sentence.words]
     root = None
+    if (not isTraining):
+        for token in tokens:
+            governor = token.name.governor
+            if (governor > 0):
+                token.parent = tokens[governor - 1]
+            else:
+                root = token
     return Sentence(idx_topic, idx_news, idx_sentence, sentence, tokens, root, len)
 
-def tokenize(doc, idx_topic, idx_news):
+def tokenize(doc, idx_topic, idx_news, isTraining=False):
     length = len(doc.sentences)
-    sentences = [generate_sentence(idx_topic, idx_news, idx, sent, length) for idx, sent in enumerate(doc.sentences)]
+    sentences = [generate_sentence(idx_topic, idx_news, idx, sent, length, isTraining) for idx, sent in enumerate(doc.sentences)]
     return sentences
 
-def pos_tag(nlp, sent, idx):
+def pos_tag(nlp, sent, idx, isTraining=False):
     doc = nlp(sent)
-    return tokenize(doc, idx, idx)
+    return tokenize(doc, idx, idx, isTraining)
 
 # Graph
 
@@ -106,24 +118,23 @@ def create_graph(corpus_pas_flatten, sim_table):
     graph_doc.add_nodes_from(list(range(len(corpus_pas_flatten))))
     for i, row in enumerate(sim_table):
         for j, score in enumerate(row):
-            score = 0.1
             if fulfill_terms(score):
                 graph_doc.add_edge(i, get_real_j_val(i, j), initial_weight=score)
     return graph_doc
 
 # new semantic graph modification
 def semantic_graph_modification(graph_docs, label_pred):
+    print('weight')
     for node1, node2, data in graph_docs.edges(data=True):
         weight_features_node1 = label_pred[node1]
         weight_features_node2 = label_pred[node2]
-        
         data['weight'] = data['initial_weight'] * ((0.5 * weight_features_node1) + (0.5 * weight_features_node2))
         # data['weight'] = (data['initial_weight'] * 0.5 * weight_features_node1) + (0.5 * weight_features_node2)
-
+        print(str(node1) + '-' + str(node2) + '=' + str(data['weight']))
     # fill sum weight
     for node in graph_docs.nodes:
         graph_docs.nodes[node]['sum_weight'] = sum(graph_docs[node][link]['weight'] for link in graph_docs[node])
-
+        print('sum weight '+str(node) +'= ' + str(sum(graph_docs[node][link]['weight'] for link in graph_docs[node])))
 def get_argument_tokens_without_punctuation(pas_tokens, arguments):
     tokens = []
     for argument in arguments:
@@ -139,7 +150,7 @@ def get_tokens_without_punctuation(ext_pas, idx_pas):
     for args in ext_pas.pas[idx_pas].args:  
         tokens.extend(get_argument_tokens_without_punctuation(ext_pas.tokens, ext_pas.pas[idx_pas].args[args]))
     tokens = set(tokens)
-    tokens = sorted(token)
+    tokens = sorted(tokens)
     
     return tokens
 
@@ -175,10 +186,12 @@ def get_max_similarity(cand_elmt, summary, sentence_similarity_table):
     return max_sim
 
 # MMR
-def maximal_marginal_relevance(min_sum_length, min_sent, ext_pas_list, ext_pas_flatten, graph_sentences, num_iter, sentence_similarity_table, isOnlyOne=False):
+def maximal_marginal_relevance(min_sum_length, min_sent, ext_pas_list, ext_pas_flatten, graph_sentences, num_iter, sentence_similarity_table):
     
-    not_chosen = [i for i in range(len(ext_pas_flatten))]
     summary = []
+    idx_pas_chosen = {}
+    not_chosen = [i for i in range(len(ext_pas_flatten))]
+    mask = create_mask_arr(ext_pas_list)
 
     max_score = max(graph_sentences.nodes[i][num_iter] for i in not_chosen)
     for i in not_chosen:
@@ -186,11 +199,12 @@ def maximal_marginal_relevance(min_sum_length, min_sent, ext_pas_list, ext_pas_f
             summary.append(i)
             not_chosen.remove(i)
             break
-    mask = create_mask_arr(ext_pas_list)
+    
+
+    idx_pas_chosen[mask[i]] = [i]
     pas_idx = get_pas_idx(mask, i)
-    sum_length = len(get_tokens_without_punctuation(ext_pas_list[mask[summary[0]]], pas_idx-1))
+    sum_length = len(get_tokens_without_punctuation(ext_pas_list[mask[i]], pas_idx-1))
     get_summary = True
-    idx_pas_chosen = {}
     while (get_summary and len(not_chosen) > 0):
         max_mmr = 0.0
         idx_max_mmr = -1
@@ -204,30 +218,21 @@ def maximal_marginal_relevance(min_sum_length, min_sent, ext_pas_list, ext_pas_f
         if idx_max_mmr == -1:
             idx_max_mmr = not_chosen[0]
        
-        corpus_pas_idx = mask[idx_max_mmr]
         pas_idx = get_pas_idx(mask, idx_max_mmr)
        
         tokens = get_tokens_without_punctuation(ext_pas_list[mask[idx_max_mmr]], pas_idx-1)
         length_new_summary = len(tokens)
-        
         if (mask[idx_max_mmr] in idx_pas_chosen):
-            if (isOnlyOne):
-                not_chosen.remove(idx_max_mmr)
-                continue
-            current_sent = idx_pas_chosen[mask[idx_max_mmr]]
-            combined = list(set(current_sent + tokens))
-            length_new_summary = len(combined) - len(current_sent)
-            idx_pas_chosen[mask[idx_max_mmr]] = combined
-            
+            idx_pas_chosen[mask[idx_max_mmr]].append(idx_max_mmr)
         else:
-            idx_pas_chosen[mask[idx_max_mmr]] = tokens
+            idx_pas_chosen[mask[idx_max_mmr]] = [idx_max_mmr]
 
         sum_length += length_new_summary # len(corpus_sentences[idx_max_mmr].sentence.words)
         summary.append(idx_max_mmr)
         not_chosen.remove(idx_max_mmr)
         if (sum_length >= min_sum_length and len(idx_pas_chosen) >= min_sent):
             get_summary = False
-
+    print(summary)
     return summary
 # NLG
 
@@ -302,21 +307,13 @@ def levenshtein_distance(word_1, word_2):
     else:
         return float(v0[word_2_length])
 
-def check_subject_pas(pas):
+def is_there_subject(pas):
     label = 'ARG0'
     if (label not in pas.args):
-        return []
-    # first subject
-    sub = pas.args[label][0]
-    # check if exist in other arguments
-    passed_sub = []
-    for arg in pas.args:
-        arg_id = set(get_flatten_arguments(pas.args[arg]))
-        if (any(i in sub for i in arg_id)):
-            break
-        passed_sub.append(sub)
-    return passed_sub
-
+        return False
+    else:
+        return True
+    
 def combine_pas(pas_list, tokens):
     new_pas = NewPAS()
     new_pas.tokens = tokens
@@ -343,8 +340,8 @@ def combine_pas(pas_list, tokens):
         
     return new_pas
 
-def natural_language_generation(summary, corpus_pas, pas, isGrouped=True):
-    mask = create_mask_arr(corpus_pas)
+def natural_language_generation(summary, ext_pas_list, ext_pas_flatten, pos_tag, isOneOnly=False, isGrouped=True):
+    mask = create_mask_arr(ext_pas_list)
     summary_pas = []
     combined = {}
     for idx in summary:
@@ -353,73 +350,102 @@ def natural_language_generation(summary, corpus_pas, pas, isGrouped=True):
             combined[idx_] = [idx]
         else:
             combined[idx_].append(idx)
-
+    print('----')
     # sort and combine pas that originate from same sentence
+    pas_root_group = []
     for idx in sorted(combined):
-        combined_pas = [pas[x] for x in combined[idx]]
-        summary_pas.append(combine_pas(combined_pas, corpus_pas[idx].tokens))
-    
+        print('idx = ' + str(idx) + ', combinesd = '+str(combined))
+        combined_pas = [ext_pas_flatten[x] for x in combined[idx]]
+        pred = pos_tag[idx].root.name.position - 1
+        pas_root = [pas for pas in combined_pas if pas.verb[0] == pred]
+        pas_root = [combine_pas(pas_root, ext_pas_list[idx].tokens)] if len(pas_root) != 0 else []
+        pas_root_group.append(pas_root)
+        summary_pas.append(combine_pas(combined_pas, ext_pas_list[idx].tokens))
+    print("summary_pas " + str(len(summary_pas)))
     if (not isGrouped):
         grouped_summary_pas = [[pas] for pas in summary_pas]
     else:
         # grouped with subjects
         grouped_summary_pas = []
         picked_pas = []
+        grouped_pas_root = []
         for idx_1, pas_1 in enumerate(summary_pas):
             if (idx_1 not in picked_pas):
                 a_group = [pas_1]
+                root_group = [pas_root_group[idx_1][0]] if len(pas_root_group[idx_1]) != 0 else []
                 picked_pas.append(idx_1)
-                # filter pas that can be grouped with subject
-                if (len(check_subject_pas(pas_1)) == 0):
+                # if there is no pas with root predicate (multiple PAS in one sentence only)
+                if (not isOneOnly and (len(pas_root_group[idx_1]) == 0)): 
                     grouped_summary_pas.append(a_group)
+                    grouped_pas_root.append(root_group)
+                    continue
+                if ((isOneOnly and not is_there_subject(pas_1)) or (not isOneOnly and not is_there_subject(pas_root_group[idx_1][0]))):
+                    grouped_summary_pas.append(a_group)
+                    grouped_pas_root.append(root_group)
                     continue
                 for idx_2, pas_2 in enumerate(summary_pas):
-                    # filter pas that can be grouped with subject
-                    if (len(check_subject_pas(pas_2)) == 0):
+                    # if there is no pas with root predicate (multiple PAS in one sentence only)
+                    if (not isOneOnly and len(pas_root_group[idx_2]) == 0):
+                        continue
+                    if ((isOneOnly and not is_there_subject(pas_2)) or (not isOneOnly and not is_there_subject(pas_root_group[idx_2][0]))):
                         continue
                     if idx_1 != idx_2:
                         tokens_1 = get_flatten_pas(pas_1)
                         tokens_2 = get_flatten_pas(pas_2)
-                        
-                        subject_tokens_1 = get_first_subject_tokens(pas_1)
-                        subject_tokens_2 = get_first_subject_tokens(pas_2)
 
-                        subject_1 = get_first_subject(pas_1).lower()
-                        subject_2 = get_first_subject(pas_2).lower()
+                        # Get the subject of root predicate PAS
+                        subject_tokens_1 = get_first_subject_tokens(pas_1) if isOneOnly else get_first_subject_tokens(pas_root_group[idx_1][0])
+                        subject_tokens_2 = get_first_subject_tokens(pas_2) if isOneOnly else  get_first_subject_tokens(pas_root_group[idx_2][0])
+
+                        subject_1 = get_first_subject(pas_1).lower() if isOneOnly else get_first_subject(pas_root_group[idx_1][0]).lower()
+                        subject_2 = get_first_subject(pas_2).lower() if isOneOnly else  get_first_subject(pas_root_group[idx_2][0]).lower()
                     
                         distance = levenshtein_distance(subject_1, subject_2)
+                        
                         if ((tokens_1[0] in subject_tokens_1) and (tokens_2[0] in subject_tokens_2)) and (distance >= 0 and distance <= 0.3):
                             a_group.append(pas_2)
+                            if (not isOneOnly):
+                                root_group.append(pas_root_group[idx_2][0])
                             picked_pas.append(idx_2)
                 grouped_summary_pas.append(a_group)
+                grouped_pas_root.append(root_group)
     summary_paragraph = []
+    print('grouped summary_pas = ' +str(len(grouped_summary_pas)))
     idx_grouped_summary_pas = 0
     while idx_grouped_summary_pas < len(grouped_summary_pas):
         pases = grouped_summary_pas[idx_grouped_summary_pas]
 
         if (len(pases) > 1):
-            pases.sort(key = lambda x: len(get_first_subject_tokens(x)), reverse = True)
-            
+            print('gabung')
+            if (isOneOnly):
+                pases.sort(key = lambda x: len(get_first_subject_tokens(x)), reverse = True)
+            else:
+                roots = grouped_pas_root[idx_grouped_summary_pas]
+                pases = [x for _, x in sorted(zip(roots, pases), key=lambda root:len(get_first_subject_tokens(root[0])), reverse = True)]
+                root_sorted = sorted(roots, key=lambda x: len(get_first_subject_tokens(x)), reverse = True)
             summary_sentence = []
             for idx, pas in enumerate(pases):
-                if (idx == 0):
-                    subject_tokens = get_first_subject_tokens(pas)
+                subject_tokens = get_first_subject_tokens(pas) if isOneOnly else get_first_subject_tokens(root_sorted[idx])
+                if isOneOnly:
                     other_tokens = get_tokens_without_first_subject(pas)
+                else:
+                    all_tokens = set(get_flatten_pas(pas))
+                    subject_tokens_ = set(subject_tokens)
+                    other_tokens = sorted(all_tokens - subject_tokens_)
+                if (idx == 0):
                     summary_sentence.extend([pas.tokens[token].name.text for token in subject_tokens])
                     summary_sentence.extend([pas.tokens[token].name.text for token in other_tokens])
                 elif (idx == len(pases) - 1):
-                    other_tokens = get_tokens_without_first_subject(pas)
                     if len(pases) == 2:
                         summary_sentence.append("dan")
                     else:
                         summary_sentence.extend([",", "dan"])
                     summary_sentence.extend([pas.tokens[token].name.text for token in other_tokens])
                 else:
-                    other_tokens = get_tokens_without_first_subject(pas)
                     summary_sentence.append(",")
                     summary_sentence.extend([pas.tokens[token].name.text for token in other_tokens])
-            # summary_sentence.append(".")
             summary_paragraph.append(summary_sentence)
+            print(summary_sentence)
         else:
             pas = pases[0]
             tokens = get_flatten_pas(pas)
@@ -427,6 +453,8 @@ def natural_language_generation(summary, corpus_pas, pas, isGrouped=True):
             summary_sentence.append(".")
             summary_paragraph.append(summary_sentence)
 
+            print('sendiri')
+            print(summary_sentence)
         idx_grouped_summary_pas += 1
 
     return summary_paragraph
@@ -464,11 +492,11 @@ def evaluate(rouge, refs, hyps, s, current=None):
                 current[r+'-'+m].append(score[r][m])
     return current
 
-def prepare_df_result(result, types):
-    if (os.path.isfile(results_path+types+'_results.csv')):
-        current = pd.read_csv(results_path+types+'_results.csv', sep=';', index_col=0)
+def prepare_df_result(result, types, algorithm):
+    if (os.path.isfile(results_path+types+'_'+algorithm+'_results.csv')):
+        current = pd.read_csv(results_path+types+'_'+algorithm+'_results.csv', sep=';', index_col=0)
         result = pd.concat([current, result], ignore_index=True)    
-    result.to_csv(results_path+types+'_results.csv', sep=';')
+    result.to_csv(results_path+types+'_'+algorithm+'_results.csv', sep=';')
     return result
 
 
@@ -480,23 +508,24 @@ def calculate_rouge(rouge, refs, hpys):
 
 def accept_input():
     while(True):
-        sent = str(input('Please input filepath that contain the articles: '))
+        # sent = str(input('Please input filepath that contain the articles: '))
         try:
-            f = open(sent)
+            f = open('data/interactive/test_1.txt')
         except:
             continue
         articles = [sent_tokenize(s) for s in f.readlines()]
+        articles = [item for sublist in articles for item in sublist]
         articles = [word_tokenize(t) for t in articles]
         break
     titles = [[] for _ in articles]
     while(True):
-        sent = str(input('Please input filepath that contain the title of the articles (please type `-1` if there are no titles provided): '))
+        # sent = str(input('Please input filepath that contain the title of the articles (please type `-1` if there are no titles provided): '))
         try:
-            if sent == '-1':
-                break
-            f = open(sent)
+            # if sent == '-1':
+            #     break
+            f = open('data/interactive/title.txt')
         except:
             continue
         titles = [word_tokenize(t) for t in f.readlines()]
         break
-    return articles, titles
+    return [articles], [titles]

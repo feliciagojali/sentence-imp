@@ -12,7 +12,7 @@ test:src/validate.py
 	python3 src/validate.py $(config) test > log/$(config)_test.txt
 
 predict:src/predict.py
-	python3 src/predict.py $(config) $(out)
+	python3 src/predict.py $(config) $(out) > log/predict.txt
 
 run-test:
 	python3 -m unittest discover src/test

@@ -2,13 +2,14 @@ import sys
 import torch
 import time
 import numpy as np
+import numpy as np
 import pandas as pd
-import tensorflow as tf
 from tqdm import tqdm
+import tensorflow as tf
 from models import GraphAlgorithm
-from utils.features_utils import compute_target, load_sim_emb, generate_sim_table, generate_features, generate_target_features, prepare_df, prepare_features
-from utils.pas_utils import convert_to_PAS_models, convert_to_extracted_PAS, get_sentence, load_srl_model, predict_srl
-from utils.main_utils import create_graph, evaluate, initialize_nlp, initialize_result, initialize_rouge, load_reg_model, maximal_marginal_relevance, natural_language_generation, preprocess, prepare_df_result, pos_tag, read_data, return_config, transform_summary, semantic_graph_modification
+from utils.features_utils import load_sim_emb, generate_sim_table, generate_features, prepare_df, prepare_features
+from utils.pas_utils import filter_pas, convert_to_PAS_models, convert_to_extracted_PAS, load_srl_model, predict_srl, filter_incomplete_pas
+from utils.main_utils import create_graph, evaluate, initialize_nlp, initialize_rouge, load_reg_model, maximal_marginal_relevance, natural_language_generation, preprocess, prepare_df_result, pos_tag, read_data, return_config, transform_summary, semantic_graph_modification
 
 
 tf.random.set_seed(42)
@@ -16,7 +17,7 @@ tf.random.set_seed(42)
 results_path = 'data/results/'
 
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="2"
+os.environ["CUDA_VISIBLE_DEVICES"]="5,7"
 
 
 def main():
@@ -25,18 +26,20 @@ def main():
     corpus, corpus_summary, corpus_title = read_data(types, config)
     
     batch = config['batch_size'] if 'batch_size' in config else len(corpus)
-
+    isOneOnly = config['one_pas_only']
+    algorithm = config['algorithm']
     # Load model
     w2v, ft = load_sim_emb(config)
-    
     try:
-        current = pd.read_csv(results_path+types+'_results.csv', sep=';', index_col=0)
+        current = pd.read_csv(results_path+types+'_'+algorithm+'_results.csv', sep=';', index_col=0)
         idx = round(current.iloc[-1]['idx_news']) + 1
     except:    
         idx = 0
     total_no_srl = 0
     loaded = False
-    start = time.time()
+    all_ref = []
+    all_sum = []
+    all_start = idx
     while (idx < len(corpus)):
         print('Current = '+ str(idx))
         s = idx
@@ -54,14 +57,18 @@ def main():
             if (not loaded):
                 nlp = initialize_nlp()
             corpus_pos_tag = [pos_tag(nlp, sent, i+s) for i, sent in tqdm(enumerate(current_corpus))]
+            torch.cuda.empty_cache()
         # SRL
         print('Predicting SRL...')
-        with tf.device('/gpu:0'):
+        with tf.device('/gpu:1'):
             if (not loaded):
                 srl_model, srl_data = load_srl_model(config)
             corpus_pas = [predict_srl(doc, srl_data, srl_model, config) for doc in tqdm(current_corpus)]
-
-        ## Cleaning when there is no SRL
+        
+        ## Filter incomplete PAS
+        corpus_pas = [[filter_incomplete_pas(pas) for pas in pas_doc]for pas_doc in corpus_pas]
+        
+        ## Cleaning when there is no SRL 
         print('Cleaning empty SRL...')
         empty_ids = []
         for i, doc in enumerate(corpus_pas):
@@ -77,6 +84,10 @@ def main():
             no_found.append(current_corpus[i][j])
             del corpus_pas[i][j]
             del corpus_pos_tag[i][j]
+        
+        # Choose one pas
+        if (isOneOnly):
+            corpus_pas = [[filter_pas(pas, pos) for pas, pos in zip(pas_doc, pos_tag_doc)] for pas_doc, pos_tag_doc in zip(corpus_pas, corpus_pos_tag)]
 
         print('Extracting features...')
         # Convert to PAS Object
@@ -98,7 +109,7 @@ def main():
             # Predicting
             df = prepare_df([doc], config, types, s)
             features_min, features_avg, _ = prepare_features(config, types, df)
-            if config['algorithm'] == 'min':
+            if algorithm == 'min':
                 pred = reg.predict(features_min)
             else:
                 pred = reg.predict(features_avg)
@@ -109,7 +120,7 @@ def main():
             num_iter = graph_algorithm.get_num_iter()
             # maximal marginal relevance 100
             summary = maximal_marginal_relevance(15, 2, ext_pas_list[i], ext_pas_flatten[i], graph_list[i], num_iter, sim_table[i])
-            summary_paragraph = natural_language_generation(summary, ext_pas_list[i], ext_pas_flatten[i])
+            summary_paragraph = natural_language_generation(summary, ext_pas_list[i], ext_pas_flatten[i], corpus_pos_tag[i], isOneOnly)
             hyps = transform_summary(summary_paragraph)
             total_sum.append(hyps)
 
@@ -118,19 +129,29 @@ def main():
         if (not loaded):
             r = initialize_rouge()
             loaded = True
-        result = evaluate(r, total_ref, total_sum, s)
-        result = pd.DataFrame(data=result)
-        prepare_df_result(result, types)
+        
+        all_ref.extend(total_ref)
+        all_sum.extend(total_sum)
+        if (idx % 500 == 0):
+            result = evaluate(r, all_ref, all_sum, all_start)
+            result = pd.DataFrame(data=result)
+            prepare_df_result(result, types, algorithm)
+            all_ref = []
+            all_sum = []
+            all_start = idx+batch
 
         print('Total no SRL = '+str(total_no_srl))
         for i in no_found:
             print(i)
         idx += batch
         
-        torch.cuda.empty_cache()
-        if( idx > 100):
-            break
-
-
+    result = evaluate(r, all_ref, all_sum, all_start)
+    result = pd.DataFrame(data=result)
+    res = prepare_df_result(result, types, algorithm)
+    res = res.select_dtypes(include=np.number)
+    print(res.mean())
+    print(res.min())
+    print(res.max())
+    
 if __name__ == "__main__":
     main()

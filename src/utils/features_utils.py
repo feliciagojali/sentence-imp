@@ -1,4 +1,4 @@
-import math
+import sys
 import string
 import os.path
 import pandas as pd
@@ -10,6 +10,7 @@ verb_pos_tags = ["VERB"]
 noun_pos_tags = ["NOUN"]
 features_name = ["fst_feature", "p2p_feature", "length_feature", "num_feature", "noun_verb_feature", "pnoun_feature", "location_feature", "temporal_feature", "max_doc_similarity_feature", "avg_doc_similarity_feature", "min_doc_similarity_feature","position_feature", "title_feature", "target"]
 features_path = 'data/features/'
+sys.setrecursionlimit(1500000)
 
 def prepare_df(ext_pas_list, config, types, start_idx):
     dict_train = {}
@@ -74,11 +75,11 @@ def generate_features(ext_pas_list, similarity_table, corpus_title):
             extracted_pas.p2p_feature = [calculate_sim(similarity_table[i],idx_pas, id_p) for id_p in range(len(extracted_pas.pas))]
             extracted_pas.fst_feature = [calculate_fst_pas(extracted_pas.tokens, p, most_common_words) for p in extracted_pas.pas]
             extracted_pas.length_feature = [calculate_length_pas(extracted_pas.tokens, p) for p in extracted_pas.pas]
-            extracted_pas.num_feature = [calculate_pos_pas(["NUM"],extracted_pas.tokens, p)/length for p, length in zip(extracted_pas.pas, extracted_pas.length_feature)]
-            extracted_pas.noun_verb_feature = [calculate_pos_pas(["NOUN","VERB"],extracted_pas.tokens, p)/length for p, length in zip(extracted_pas.pas, extracted_pas.length_feature)]
-            extracted_pas.pnoun_feature = [calculate_pos_pas(["PROPN"],extracted_pas.tokens, p)/length for p, length in zip(extracted_pas.pas, extracted_pas.length_feature)]
-            extracted_pas.temporal_feature = [(calculate_arg_pas("AM-TMP", p)/length) for p, length in zip(extracted_pas.pas, extracted_pas.length_feature)]
-            extracted_pas.location_feature = [calculate_arg_pas("AM-LOC", p)/length for p, length in zip(extracted_pas.pas, extracted_pas.length_feature)]
+            extracted_pas.num_feature = [calculate_pos_pas(["NUM"],extracted_pas.tokens, p)/length if length != 0 else 0 for p, length in zip(extracted_pas.pas, extracted_pas.length_feature)]
+            extracted_pas.noun_verb_feature = [calculate_pos_pas(["NOUN","VERB"],extracted_pas.tokens, p)/length if length != 0 else 0 for p, length in zip(extracted_pas.pas, extracted_pas.length_feature)]
+            extracted_pas.pnoun_feature = [calculate_pos_pas(["PROPN"],extracted_pas.tokens, p)/length if length != 0  else 0 for p, length in zip(extracted_pas.pas, extracted_pas.length_feature)]
+            extracted_pas.temporal_feature = [(calculate_arg_pas("AM-TMP", p)/length) if length != 0 else 0 for p, length in zip(extracted_pas.pas, extracted_pas.length_feature)]
+            extracted_pas.location_feature = [calculate_arg_pas("AM-LOC", p)/length if length != 0 else 0 for p, length in zip(extracted_pas.pas, extracted_pas.length_feature)]
             extracted_pas.max_doc_similarity_feature = [calculate_max_similarity(similarity_table[i], idx_pas, id_p) for id_p in range(len(extracted_pas.pas))]        
             extracted_pas.min_doc_similarity_feature = [calculate_min_similarity(similarity_table[i], idx_pas, id_p) for id_p in range(len(extracted_pas.pas))]
 
@@ -97,10 +98,10 @@ def generate_features(ext_pas_list, similarity_table, corpus_title):
             
         total = count_pas(doc) - 1
         for extracted_pas in doc:
-            extracted_pas.avg_doc_similarity_feature = [val/total for val in extracted_pas.p2p_feature]
-            extracted_pas.length_feature = [val/max_length for val in extracted_pas.length_feature]
-            extracted_pas.p2p_feature = [val/max_p2p for val in extracted_pas.p2p_feature]
-            extracted_pas.fst_feature = [val/max_fst for val in extracted_pas.fst_feature]
+            extracted_pas.avg_doc_similarity_feature = [val/total if total != 0 else 0 for val in extracted_pas.p2p_feature]
+            extracted_pas.length_feature = [val/max_length if max_length != 0  else 0 for val in extracted_pas.length_feature]
+            extracted_pas.p2p_feature = [val/max_p2p  if max_p2p != 0  else 0 for val in extracted_pas.p2p_feature]
+            extracted_pas.fst_feature = [val/max_fst  if max_fst != 0  else 0 for val in extracted_pas.fst_feature]
             pos = float(extracted_pas.num_sentences - extracted_pas.idx_sentence)/extracted_pas.num_sentences
             extracted_pas.position_feature = [pos for _ in extracted_pas.pas]
 
@@ -229,26 +230,29 @@ def get_idx_j_val(i, real_j):
 def fulfill_terms(value):
     return (value > 0 and value <= 0.5)
 
-def calculate_occurence(tokens, arguments, corpus_vocabs):
+def calculate_occurence(tokens, arguments, corpus_vocabs, chosen):
     for argument in arguments:
         for word in argument:
-            if (tokens[word].name.pos_tag in (noun_pos_tags + verb_pos_tags)):
-                if tokens[word].name.text.lower() in corpus_vocabs:
-                    corpus_vocabs[tokens[word].name.text.lower()] += 1
-                else:
-                    corpus_vocabs[tokens[word].name.text.lower()] = 1
+            if (word not in chosen):
+                if (tokens[word].name.pos_tag in (noun_pos_tags + verb_pos_tags)):
+                    if tokens[word].name.text.lower() in corpus_vocabs:
+                        corpus_vocabs[tokens[word].name.text.lower()] += 1
+                    else:
+                        corpus_vocabs[tokens[word].name.text.lower()] = 1
+                    chosen.append(word)
 
-def get_corpus_vocabs_and_most_common_words(corpus_pas): # corpus_docs[corpus_name]["sentences"]
+def get_corpus_vocabs_and_most_common_words(corpus_pas): 
     corpus_vocabs = {}
-    for extracted_pas in corpus_pas:
+    chosen = {}
+    for i, extracted_pas in enumerate(corpus_pas):
+        chosen[i] = []
         pas = extracted_pas.pas
         for p in pas:
             #verb
-            verb = p.verb
-            calculate_occurence(extracted_pas.tokens, [p.verb], corpus_vocabs)
+            calculate_occurence(extracted_pas.tokens, [p.verb], corpus_vocabs, chosen[i])
             args = p.args
             for _, val in args.items():
-                calculate_occurence(extracted_pas.tokens, val, corpus_vocabs)
+                calculate_occurence(extracted_pas.tokens, val, corpus_vocabs, chosen[i])
        
    
     most_common_words = []
@@ -357,7 +361,7 @@ def compute_target(rouge, hyps, refs, empty_ids, articles):
         for idx_sent, sent in enumerate(hypothesis[idx]):
             if [idx, idx_sent] not in empty_ids:
                 length = len(sent)
-                target_sent = [target_all[current_id + i]/sum_target for i in range(length)]
+                target_sent = [target_all[current_id + i]/sum_target if sum_target != 0 else 0 for i in range(length)]
                 current_id += length
                 target.append(target_sent)
         target_full.append(target)
@@ -408,4 +412,7 @@ def calculate_title_word_occurence(title_tokens, pas_tokens):
             length += 1
             if word.lower() in title_tokens:
                 count += 1
-    return count/length
+    if length == 0.0:
+        return 0
+    else:
+        return count/length
