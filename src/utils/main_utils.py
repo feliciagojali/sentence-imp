@@ -83,9 +83,6 @@ def filter_article(sent):
     result = re.sub('^[a-zA-Z]+ : [Ll][iI][pP][Uu][Tt][Aa][Nn]( . )? ?6? . [Cc]om , [a-zA-Z ]+ : ', '', result) # remove liputan6 .com only
     result = re.sub('[Ll][iI][pP][Uu][Tt][Aa][Nn]( . )? ?6? . [cC]om , [a-zA-Z ]+ : ', '', result) # remove liputan6 .com only
     result = re.sub(r"(/[a-z]*)?&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-fA-F]{1,6}) ;", "", result) # remove HTML entites
-    result = re.sub(r"\.\s+((\([^\)]+\)\s+\[[^\]]+\])|(\([^\)]+\)))", "", result) # delete author and recommendation at the end of paragraph   
-    result = re.sub("[[] Baca : ", ". ", result) # delete author and recommendation at the end of paragraph   
-    result = re.sub('[(] ([a-zA-Z/]+ )+[)]( [.])*$', "", result)
     return result
 
 def preprocess(sent):
@@ -136,17 +133,14 @@ def create_graph(corpus_pas_flatten, sim_table):
 
 # new semantic graph modification
 def semantic_graph_modification(graph_docs, label_pred):
-    print('weight')
     for node1, node2, data in graph_docs.edges(data=True):
         weight_features_node1 = label_pred[node1]
         weight_features_node2 = label_pred[node2]
         data['weight'] = data['initial_weight'] * ((0.5 * weight_features_node1) + (0.5 * weight_features_node2))
         # data['weight'] = (data['initial_weight'] * 0.5 * weight_features_node1) + (0.5 * weight_features_node2)
-        print(str(node1) + '-' + str(node2) + '=' + str(data['weight']))
     # fill sum weight
     for node in graph_docs.nodes:
         graph_docs.nodes[node]['sum_weight'] = sum(graph_docs[node][link]['weight'] for link in graph_docs[node])
-        print('sum weight '+str(node) +'= ' + str(sum(graph_docs[node][link]['weight'] for link in graph_docs[node])))
 def get_argument_tokens_without_punctuation(pas_tokens, arguments):
     tokens = []
     for argument in arguments:
