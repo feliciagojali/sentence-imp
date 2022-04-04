@@ -17,13 +17,13 @@ from .pas_utils import get_flatten_pas, get_flatten_arguments
 from .variables import models_path, raw_data_path, exception_pos_tags, rouge_metrics, metrics, results_path
 
 tqdm.pandas()
-# stanza.download("id", model_dir='/raid/data/m13518101')
+stanza.download("id")
 
 def initialize_nlp(isTraining=False):
     if (not isTraining):
-        nlp = stanza.Pipeline(lang="id", tokenize_pretokenized=True, dir='/raid/data/m13518101', pos_batch_size=500)
+        nlp = stanza.Pipeline(lang="id", tokenize_pretokenized=True, pos_batch_size=500)
     else:
-        nlp = stanza.Pipeline(lang="id", tokenize_pretokenized=True, dir='/raid/data/m13518101', pos_batch_size=500, processors='tokenize, pos')
+        nlp = stanza.Pipeline(lang="id", tokenize_pretokenized=True, pos_batch_size=500, processors='tokenize, pos')
     return nlp
 
 def initialize_rouge():
