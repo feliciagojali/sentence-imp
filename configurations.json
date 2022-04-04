@@ -9,7 +9,7 @@
         "max_char": 52,
         "char_list": " 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.,-_()[]{}!?:;#'\"/\\%$`&=*+@^~|",
         "features": "noincomplete.csv",
-        "word_emb_path":"data/pretrained/word2vec_news.model",
+        "word_emb_path":"../../input/pretrained/pretrained/word2vec_news.model.wv.vectors/word2vec_news.model",
         "fasttext_emb_path": "../../input/pretrained/pretrained/kyubyong.ft.id/kyubyong.ft.id.bin",
         "w2v_sim_path":"../../input/pretrained/pretrained/word2vec-input_sent.txt-s300-c5-w5-e10-SG.model.trainables.syn1neg/word2vec-input_sent.txt-s300-c5-w5-e10-SG.model",
         "ft_sim_path": "../../input/pretrained/pretrained/kyubyong.ft.id/kyubyong.ft.id.bin",
