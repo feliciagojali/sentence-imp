@@ -16,7 +16,7 @@
         "batch_size": 10,
         "use_fasttext": false,
         "use_pruning": true,
-        "one_pas_only": false,
+        "one_pas_only": true,
         "algorithm": "min",
         "data_path": "summary_corpus.csv",
         "srl_model": "data/pretrained/full_w2v_bihlstm300_pruning"

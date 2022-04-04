@@ -17,7 +17,7 @@ tf.random.set_seed(42)
 results_path = 'data/results/'
 
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="5,7"
+os.environ["CUDA_VISIBLE_DEVICES"]="2,3"
 
 
 def main():
@@ -67,7 +67,6 @@ def main():
         
         ## Filter incomplete PAS
         corpus_pas = [[filter_incomplete_pas(pas,pos_tag_sent) for pas, pos_tag_sent in zip(pas_doc, pos_tag_sent)] for pas_doc, pos_tag_sent in zip(corpus_pas, corpus_pos_tag)]
-        
         ## Cleaning when there is no SRL 
         print('Cleaning empty SRL...')
         empty_ids = []
@@ -118,7 +117,7 @@ def main():
             graph_algorithm = GraphAlgorithm(graph_list[i], threshold=0.0001, dp=0.85, init=1.0, max_iter=100)
             graph_algorithm.run_algorithm()
             num_iter = graph_algorithm.get_num_iter()
-            # maximal marginal relevance 100
+            # maximal marginal relevance
             summary = maximal_marginal_relevance(15, 2, ext_pas_list[i], ext_pas_flatten[i], graph_list[i], num_iter, sim_table[i])
             summary_paragraph = natural_language_generation(summary, ext_pas_list[i], ext_pas_flatten[i], corpus_pos_tag[i], isOneOnly)
             hyps = transform_summary(summary_paragraph)

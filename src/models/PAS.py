@@ -1,4 +1,4 @@
-core_labels = ['ARG0','ARG1','ARG2', 'ARG3', 'ARG4', 'ARG5']
+core_labels = ['ARG0','ARG1','ARG2']
 included_labels = ['AM-TMP' 'AM-LOC']
 used_labels = core_labels + included_labels
 class NewPAS:

@@ -17,7 +17,7 @@ from .pas_utils import get_flatten_pas, get_flatten_arguments
 from .variables import models_path, raw_data_path, exception_pos_tags, rouge_metrics, metrics, results_path
 
 tqdm.pandas()
-stanza.download("id", model_dir='/raid/data/m13518101')
+# stanza.download("id", model_dir='/raid/data/m13518101')
 
 def initialize_nlp(isTraining=False):
     if (not isTraining):
@@ -192,24 +192,23 @@ def get_max_similarity(cand_elmt, summary, sentence_similarity_table):
     return max_sim
 
 # MMR
-def maximal_marginal_relevance(min_sum_length, min_sent, ext_pas_list, ext_pas_flatten, graph_sentences, num_iter, sentence_similarity_table):
+def maximal_marginal_relevance(min_sum_length, min_sent, ext_pas_list, ext_pas_flatten, graph_sentences, num_iter, sentence_similarity_table, pred_id=None):
     
     summary = []
     idx_pas_chosen = {}
-    not_chosen = [i for i in range(len(ext_pas_flatten))]
+    not_chosen = [i for i in range(len(ext_pas_flatten))] if pred_id is None else pred_id
     mask = create_mask_arr(ext_pas_list)
-
+    
     max_score = max(graph_sentences.nodes[i][num_iter] for i in not_chosen)
     for i in not_chosen:
         if graph_sentences.nodes[i][num_iter] == max_score:
             summary.append(i)
             not_chosen.remove(i)
             break
-    
-
-    idx_pas_chosen[mask[i]] = [i]
     pas_idx = get_pas_idx(mask, i)
-    sum_length = len(get_tokens_without_punctuation(ext_pas_list[mask[i]], pas_idx-1))
+    tokens = get_tokens_without_punctuation(ext_pas_list[mask[i]], pas_idx-1)
+    sum_length = len(tokens)
+    idx_pas_chosen[mask[i]] = [i]
     get_summary = True
     while (get_summary and len(not_chosen) > 0):
         max_mmr = 0.0
@@ -238,7 +237,6 @@ def maximal_marginal_relevance(min_sum_length, min_sent, ext_pas_list, ext_pas_f
         not_chosen.remove(idx_max_mmr)
         if (sum_length >= min_sum_length and len(idx_pas_chosen) >= min_sent):
             get_summary = False
-    print(summary)
     return summary
 # NLG
 
