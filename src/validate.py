@@ -17,7 +17,7 @@ tf.random.set_seed(42)
 results_path = 'data/results/'
 
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="2,3"
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 
 def main():
@@ -60,7 +60,7 @@ def main():
             torch.cuda.empty_cache()
         # SRL
         print('Predicting SRL...')
-        with tf.device('/gpu:1'):
+        with tf.device('/gpu:0'):
             if (not loaded):
                 srl_model, srl_data = load_srl_model(config)
             corpus_pas = [predict_srl(doc, srl_data, srl_model, config) for doc in tqdm(current_corpus)]
