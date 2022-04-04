@@ -5,7 +5,7 @@ exception_pos_tags = ["PUNCT", "SYM", "X"]
 rouge_metrics = ['rouge-1', 'rouge-2', 'rouge-l']
 metrics = ['f', 'r', 'p']
 
-raw_data_path = '../input/val-summary/'
+raw_data_path = '../../input/val-summary/'
 results_path = 'data/results/'
 features_path = 'data/features/'
 models_path = 'models/linearRegression_spansrl_'
