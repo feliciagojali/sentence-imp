@@ -19,6 +19,6 @@
         "one_pas_only": true,
         "algorithm": "min",
         "data_path": "summary_corpus.csv",
-        "srl_model": "data/pretrained/full_w2v_bihlstm300_pruning"
+        "srl_model": "../../input/srlmodel/full_w2v_bihlstm300_pruning"
     }
 }
