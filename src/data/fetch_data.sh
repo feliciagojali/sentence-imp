@@ -22,8 +22,6 @@ if [ ! -d $RAW_PATH ]; then
 fi
 
 cd $RAW_PATH
-gdown 1trA-Z9jYexgfw5OurEvIvx_uxIdLQmer
-unzip summary_corpus.csv
 
 cd ".."
 
