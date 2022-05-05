@@ -32,13 +32,11 @@ def initialize_rouge():
 
 def load_reg_model(algorithm) :
     loaded_model = pickle.load(open(models_path + algorithm + ".sav", 'rb'))
-    print(loaded_model.coef_)
     return loaded_model
 
 def preprocess_title(url):
     title = url.split('/')[-1]
     title = title.split('-')
-    print(title)
     return title
     
 def read_data(types, config):
@@ -347,18 +345,15 @@ def natural_language_generation(summary, ext_pas_list, ext_pas_flatten, pos_tag,
             combined[idx_] = [idx]
         else:
             combined[idx_].append(idx)
-    print('----')
     # sort and combine pas that originate from same sentence
     pas_root_group = []
     for idx in sorted(combined):
-        print('idx = ' + str(idx) + ', combinesd = '+str(combined))
         combined_pas = [ext_pas_flatten[x] for x in combined[idx]]
         pred = pos_tag[idx].root.name.position - 1
         pas_root = [pas for pas in combined_pas if pas.verb[0] == pred]
         pas_root = [combine_pas(pas_root, ext_pas_list[idx].tokens)] if len(pas_root) != 0 else []
         pas_root_group.append(pas_root)
         summary_pas.append(combine_pas(combined_pas, ext_pas_list[idx].tokens))
-    print("summary_pas " + str(len(summary_pas)))
     if (not isGrouped):
         grouped_summary_pas = [[pas] for pas in summary_pas]
     else:
@@ -407,13 +402,11 @@ def natural_language_generation(summary, ext_pas_list, ext_pas_flatten, pos_tag,
                 grouped_summary_pas.append(a_group)
                 grouped_pas_root.append(root_group)
     summary_paragraph = []
-    print('grouped summary_pas = ' +str(len(grouped_summary_pas)))
     idx_grouped_summary_pas = 0
     while idx_grouped_summary_pas < len(grouped_summary_pas):
         pases = grouped_summary_pas[idx_grouped_summary_pas]
 
         if (len(pases) > 1):
-            print('gabung')
             if (isOneOnly):
                 pases.sort(key = lambda x: len(get_first_subject_tokens(x)), reverse = True)
             else:
@@ -442,16 +435,12 @@ def natural_language_generation(summary, ext_pas_list, ext_pas_flatten, pos_tag,
                     summary_sentence.append(",")
                     summary_sentence.extend([pas.tokens[token].name.text for token in other_tokens])
             summary_paragraph.append(summary_sentence)
-            print(summary_sentence)
         else:
             pas = pases[0]
             tokens = get_flatten_pas(pas)
             summary_sentence = [pas.tokens[token].name.text for token in tokens]
             summary_sentence.append(".")
             summary_paragraph.append(summary_sentence)
-
-            print('sendiri')
-            print(summary_sentence)
         idx_grouped_summary_pas += 1
 
     return summary_paragraph

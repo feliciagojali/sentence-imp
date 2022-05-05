@@ -45,16 +45,14 @@ def main():
 
         # Pos Tag
         print('POS Tagging...')
-        with torch.cuda.device(0):
-            if (not loaded):
-                nlp = initialize_nlp()
-            corpus_pos_tag = [pos_tag(nlp, sent, i+s) for i, sent in tqdm(enumerate(current_corpus))]
+        if (not loaded):
+            nlp = initialize_nlp()
+        corpus_pos_tag = [pos_tag(nlp, sent, i+s) for i, sent in tqdm(enumerate(current_corpus))]
         # SRL
         print('Predicting SRL...')
-        with tf.device('/gpu:0'):
-            if (not loaded):
-                srl_model, srl_data = load_srl_model(config)
-            corpus_pas = [predict_srl(doc, srl_data, srl_model, config) for doc in tqdm(current_corpus)]
+        if (not loaded):
+            srl_model, srl_data = load_srl_model(config)
+        corpus_pas = [predict_srl(doc, srl_data, srl_model, config) for doc in tqdm(current_corpus)]
 
         ## Filter incomplete PAS
         corpus_pas = [[filter_incomplete_pas(pas) for pas in pas_doc]for pas_doc in corpus_pas]
@@ -92,8 +90,7 @@ def main():
 
         if (not loaded):
             reg = load_reg_model(config['algorithm'])
-        print('----')
-        print(list(graph_list[0].nodes(data=True)))
+    
         total_sum = []
         for i, doc in enumerate(ext_pas_list):
             # Predicting
@@ -103,8 +100,7 @@ def main():
                 pred = reg.predict(features_min)
             else:
                 pred = reg.predict(features_avg)
-            for j in pred:
-                print(j)
+            
             semantic_graph_modification(graph_list[i], pred)
             # graph-based ranking algorithm
             graph_algorithm = GraphAlgorithm(graph_list[i], threshold=0.0001, dp=0.85, init=1.0, max_iter=100)
@@ -112,15 +108,14 @@ def main():
             num_iter = graph_algorithm.get_num_iter()
             # maximal marginal relevance 100
             summary = maximal_marginal_relevance(15, 2, ext_pas_list[i], ext_pas_flatten[i], graph_list[i], num_iter, sim_table[i])
-            print('mmr result = ' +str(summary))
             summary_paragraph = natural_language_generation(summary, ext_pas_list[i], ext_pas_flatten[i], corpus_pos_tag[i], isOneOnly)
-            print('summary paragraph')
-            print(summary_paragraph)
+
             hyps = transform_summary(summary_paragraph)
             total_sum.append(hyps)
 
         final_result.extend(total_sum)
         idx+=batch
+        
     f = open(results_path+sys.argv[2], 'w+')
     for r in final_result:
         f.write(r)

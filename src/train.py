@@ -50,19 +50,16 @@ def main():
         current_title = [preprocess_title(x) for x in corpus_title[s:e]]
 
         # Pos Tag
-        with torch.cuda.device(0):
-            print('POS Tagging...')
-            if (not loaded):
-                nlp = initialize_nlp(True)
-            corpus_pos_tag = [pos_tag(nlp, sent, i+s, True) for i, sent in tqdm(enumerate(current_corpus))]
-            torch.cuda.empty_cache()
+        print('POS Tagging...')
+        if (not loaded):
+            nlp = initialize_nlp(True)
+        corpus_pos_tag = [pos_tag(nlp, sent, i+s, True) for i, sent in tqdm(enumerate(current_corpus))]
 
         # SRL
         print('Predicting SRL...')
-        with tf.device('/gpu:1'):
-            if (not loaded):
-                srl_model, srl_data = load_srl_model(config)
-            corpus_pas = [predict_srl(doc, srl_data, srl_model, config) for doc in tqdm(current_corpus)]
+        if (not loaded):
+            srl_model, srl_data = load_srl_model(config)
+        corpus_pas = [predict_srl(doc, srl_data, srl_model, config) for doc in tqdm(current_corpus)]
         
         ## Filter incomplete PAS
         corpus_pas = [[filter_incomplete_pas(pas) for pas in pas_doc]for pas_doc in corpus_pas]
@@ -82,6 +79,7 @@ def main():
             no_found.append(current_corpus[i][j])
             del corpus_pas[i][j]
             del corpus_pos_tag[i][j]
+            
         print('Extracting features...')
         # Convert to PAS Object
         pas_list = [convert_to_PAS_models(pas, pos) for pas, pos in zip(corpus_pas, corpus_pos_tag)]
