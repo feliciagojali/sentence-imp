@@ -6,7 +6,7 @@ import pandas as pd
 from tqdm import tqdm
 from models import GraphAlgorithm
 from utils.features_utils import load_sim_emb, generate_sim_table, generate_features, prepare_df, prepare_features
-from utils.pas_utils import filter_pas, convert_to_PAS_models, convert_to_extracted_PAS, load_srl_model, predict_srl, filter_incomplete_pas
+from utils.pas_utils import append_pas, filter_pas, convert_to_PAS_models, convert_to_extracted_PAS, load_srl_model, predict_srl, filter_incomplete_pas
 from utils.main_utils import create_graph, evaluate, initialize_nlp, initialize_rouge, load_reg_model, maximal_marginal_relevance, natural_language_generation, preprocess, preprocess_title, prepare_df_result, pos_tag, read_data, return_config, transform_summary, semantic_graph_modification
 
 def main():
@@ -25,6 +25,16 @@ def main():
     loaded = False
     all_ref = []
     all_sum = []
+
+    pas_filename = 'data/results/'+types+'_srl.json'
+    try:
+        f = open(pas_filename)
+        all_pas = json.load(f)['data']
+        saved_pas = True
+    except:
+        all_pas = []
+        saved_pas = False
+
     all_start = idx
     while (idx < len(corpus)):
         print('Current = '+ str(idx))
@@ -45,13 +55,13 @@ def main():
         print('Predicting SRL...')
         if (not loaded):
             srl_model, srl_data = load_srl_model(config)
-        corpus_pas = [predict_srl(doc, srl_data, srl_model, config) for doc in tqdm(current_corpus)]
-        f = open('results.json')
-        corpus_pas = json.load(f)
-        corpus_pas = [corpus_pas[str(key)] for key in [0, 1, 2,3, 4 ,5, 6, 7, 8, 9]]
+        corpus_pas = [predict_srl(doc, srl_data, srl_model, config) for doc in tqdm(current_corpus)] if not saved_pas else all_pas[s:e]
+
+        if (not saved_pas):
+            all_pas.extend(corpus_pas)
+
         ## Filter incomplete PAS
         corpus_pas = [[filter_incomplete_pas(pas,pos_tag_sent) for pas, pos_tag_sent in zip(pas_doc, pos_tag_sent)] for pas_doc, pos_tag_sent in zip(corpus_pas, corpus_pos_tag)]
-        
         ## Cleaning when there is no SRL 
         print('Cleaning empty SRL...')
         empty_ids = []
@@ -64,7 +74,6 @@ def main():
         no_found = []
         for id in reversed(empty_ids):
             i, j = id
-            print(id)
             no_found.append(current_corpus[i][j])
             del corpus_pas[i][j]
             del corpus_pos_tag[i][j]
@@ -97,14 +106,13 @@ def main():
                 pred = reg.predict(features_min)
             else:
                 pred = reg.predict(features_avg)
-            for k in pred:
-                print(k)
+
             semantic_graph_modification(graph_list[i], pred)
             # graph-based ranking algorithm
             graph_algorithm = GraphAlgorithm(graph_list[i], threshold=0.0001, dp=0.85, init=1.0, max_iter=100)
             graph_algorithm.run_algorithm()
             num_iter = graph_algorithm.get_num_iter()
-            # maximal marginal relevance 100
+            # maximal marginal relevance
             summary = maximal_marginal_relevance(15, 2, ext_pas_list[i], ext_pas_flatten[i], graph_list[i], num_iter, sim_table[i])
             summary_paragraph = natural_language_generation(summary, ext_pas_list[i], ext_pas_flatten[i], corpus_pos_tag[i], isOneOnly)
             hyps = transform_summary(summary_paragraph)
@@ -118,7 +126,16 @@ def main():
         
         all_ref.extend(total_ref)
         all_sum.extend(total_sum)
-     
+        if (idx % 500 == 0):
+            result = evaluate(r, all_ref, all_sum, all_start)
+            result = pd.DataFrame(data=result)
+            prepare_df_result(result, types, algorithm)
+            if (not saved_pas):
+                append_pas(all_pas, types)
+                all_pas = []
+            all_ref = []
+            all_sum = []
+            all_start = idx+batch
 
         print('Total no SRL = '+str(total_no_srl))
         for i in no_found:
@@ -126,6 +143,7 @@ def main():
         idx += batch
         break
         
+    append_pas(all_pas, types)  
     result = evaluate(r, all_ref, all_sum, all_start)
     result = pd.DataFrame(data=result)
     res = prepare_df_result(result, types, algorithm)

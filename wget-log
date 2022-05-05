@@ -1,0 +1,8 @@
+--2022-04-04 12:14:38--  https://www.novelupdates.com/stag/childcare/?st=1
+Resolving www.novelupdates.com (www.novelupdates.com)... 104.26.14.28, 172.67.69.82, 104.26.15.28, ...
+Connecting to www.novelupdates.com (www.novelupdates.com)|104.26.14.28|:443... failed: Connection timed out.
+Connecting to www.novelupdates.com (www.novelupdates.com)|172.67.69.82|:443... failed: Connection timed out.
+Connecting to www.novelupdates.com (www.novelupdates.com)|104.26.15.28|:443... failed: Connection timed out.
+Connecting to www.novelupdates.com (www.novelupdates.com)|2606:4700:20::681a:e1c|:443... failed: Network is unreachable.
+Connecting to www.novelupdates.com (www.novelupdates.com)|2606:4700:20::681a:f1c|:443... failed: Network is unreachable.
+Connecting to www.novelupdates.com (www.novelupdates.com)|2606:4700:20::ac43:4552|:443... failed: Network is unreachable.

@@ -8,11 +8,11 @@ from tqdm import tqdm
 from sklearn.linear_model import LinearRegression
 from utils.features_utils import compute_target, load_sim_emb, generate_sim_table, generate_features, generate_target_features, load_train_df, prepare_df, prepare_features
 from utils.pas_utils import convert_to_PAS_models, convert_to_extracted_PAS, get_sentence, load_srl_model, predict_srl, filter_incomplete_pas
-from utils.main_utils import initialize_nlp, initialize_rouge, read_data, return_config, preprocess, preprocess_title, pos_tag
+from utils.main_utils import preprocess_title, initialize_nlp, initialize_rouge, read_data, return_config, preprocess, prepare_df_result, pos_tag
 
 model_path = 'models/'
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="6,7"
+os.environ["CUDA_VISIBLE_DEVICES"]="4,5"
 
 tf.random.set_seed(42)
 def main():
@@ -30,16 +30,16 @@ def main():
         current = load_train_df(config, 'train')
         idx = round(current.iloc[-1]['idx_news']) + 1
     except:
-        idx = 0
+        idx = 100000
     
     total_no_srl = 0
     loaded = False
     full_ext_pas_list = []
     full_start = idx
-    while (idx < 100000):
+    while (idx < len(corpus)):
         print('Current = '+ str(idx))
         s = idx
-        e = idx + batch if idx + batch < 100000 else 100000
+        e = idx + batch if idx + batch < len(corpus) else len(corpus)
 
         # Preprocess
         print('Preprocessing...')
@@ -48,16 +48,19 @@ def main():
         current_title = [preprocess_title(x) for x in corpus_title[s:e]]
 
         # Pos Tag
-        print('POS Tagging...')
-        if (not loaded):
-            nlp = initialize_nlp(True)
-        corpus_pos_tag = [pos_tag(nlp, sent, i+s, True) for i, sent in tqdm(enumerate(current_corpus))]
+        with torch.cuda.device(0):
+            print('POS Tagging...')
+            if (not loaded):
+                nlp = initialize_nlp(True)
+            corpus_pos_tag = [pos_tag(nlp, sent, i+s, True) for i, sent in tqdm(enumerate(current_corpus))]
+            torch.cuda.empty_cache()
 
         # SRL
         print('Predicting SRL...')
-        if (not loaded):
-            srl_model, srl_data = load_srl_model(config)
-        corpus_pas = [predict_srl(doc, srl_data, srl_model, config) for doc in tqdm(current_corpus)]
+        with tf.device('/gpu:1'):
+            if (not loaded):
+                srl_model, srl_data = load_srl_model(config)
+            corpus_pas = [predict_srl(doc, srl_data, srl_model, config) for doc in tqdm(current_corpus)]
         
         ## Filter incomplete PAS
         corpus_pas = [[filter_incomplete_pas(pas,pos_tag_sent) for pas, pos_tag_sent in zip(pas_doc, pos_tag_sent)]for pas_doc, pos_tag_sent in zip(corpus_pas, corpus_pos_tag)]
@@ -77,7 +80,6 @@ def main():
             no_found.append(current_corpus[i][j])
             del corpus_pas[i][j]
             del corpus_pos_tag[i][j]
-            
         print('Extracting features...')
         # Convert to PAS Object
         pas_list = [convert_to_PAS_models(pas, pos) for pas, pos in zip(corpus_pas, corpus_pos_tag)]
@@ -109,17 +111,17 @@ def main():
         for i in no_found:
             print(i)
     prepare_df(full_ext_pas_list, config, 'train', full_start)
-    reg_min = LinearRegression()
-    reg_avg = LinearRegression()
+    # reg_min = LinearRegression()
+    # reg_avg = LinearRegression()
 
-    features_min, features_avg, target = prepare_features(config, 'train')
+    # features_min, features_avg, target = prepare_features(config, 'train')
 
-    reg_min.fit(features_min, target)
-    reg_avg.fit(features_avg, target)
+    # reg_min.fit(features_min, target)
+    # reg_avg.fit(features_avg, target)
     
-    print('Dumping model')
-    pickle.dump(reg_min, open(model_path+'linearRegression_spansrl_min_noincomplete.sav', 'wb'))
-    pickle.dump(reg_avg, open(model_path+'linearRegression_spansrl_avg_noincomplete.sav', 'wb'))
+    # print('Dumping model')
+    # pickle.dump(reg_min, open(model_path+'linearRegression_spansrl_min_noincomplete.sav', 'wb'))
+    # pickle.dump(reg_avg, open(model_path+'linearRegression_spansrl_avg_noincomplete.sav', 'wb'))
 
 if __name__ == "__main__":
     main()
