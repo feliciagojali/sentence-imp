@@ -481,10 +481,10 @@ def evaluate(rouge, refs, hyps, s, current=None):
     return current
 
 def prepare_df_result(result, types, algorithm):
-    # if (os.path.isfile(results_path+types+'_'+algorithm+'_results.csv')):
-    #     current = pd.read_csv(results_path+types+'_'+algorithm+'_results.csv', sep=';', index_col=0)
-    #     result = pd.concat([current, result], ignore_index=True)    
-    result.to_csv(results_path+types+'_'+algorithm+'_resultstest.csv', sep=';')
+    if (os.path.isfile(results_path+types+'_'+algorithm+'_results.csv')):
+        current = pd.read_csv(results_path+types+'_'+algorithm+'_results.csv', sep=';', index_col=0)
+        result = pd.concat([current, result], ignore_index=True)    
+    result.to_csv(results_path+types+'_'+algorithm+'_results.csv', sep=';')
     return result
 
 
@@ -496,24 +496,24 @@ def calculate_rouge(rouge, refs, hpys):
 
 def accept_input():
     while(True):
-        # sent = str(input('Please input filepath that contain the articles: '))
+        sent = str(input('Please input filepath that contain the article: '))
         try:
-            f = open('data/interactive/test_1.txt')
+            f = open(sent)
         except:
             continue
         articles = [sent_tokenize(s) for s in f.readlines()]
         articles = [item for sublist in articles for item in sublist]
         articles = [word_tokenize(t) for t in articles]
         break
-    titles = [[] for _ in articles]
     while(True):
-        # sent = str(input('Please input filepath that contain the title of the articles (please type `-1` if there are no titles provided): '))
+        sent = str(input('Please input filepath that contain the title of the articles (please type `-1` if there are no titles provided): '))
         try:
-            # if sent == '-1':
-            #     break
-            f = open('data/interactive/title.txt')
+            if sent == '-1':
+                titles = []
+                break
+            f = open(sent)
         except:
             continue
-        titles = [word_tokenize(t) for t in f.readlines()]
+        titles = word_tokenize(f.read())
         break
     return [articles], [titles]

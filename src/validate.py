@@ -12,7 +12,7 @@ from utils.main_utils import create_graph, evaluate, initialize_nlp, initialize_
 def main():
     types = sys.argv[2]
     config = return_config(sys.argv)
-    corpus, summary, corpus_title = read_data('train', config)
+    corpus, summary, corpus_title = read_data(types, config)
     
     batch = config['batch_size'] if 'batch_size' in config else len(corpus)
     isOneOnly = config['one_pas_only']
@@ -47,6 +47,7 @@ def main():
         current_summary = summary[s:e]
         current_title = [preprocess_title(x) for x in corpus_title[s:e]]
 
+        print(current_corpus)
         # Pos Tag
         if (not loaded):
             nlp = initialize_nlp()

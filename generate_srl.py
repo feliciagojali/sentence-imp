@@ -83,6 +83,9 @@ def predict_srl(doc, srl_data, srl_model, config):
     return res
 
 def _print_f1(total_gold, total_predicted, total_matched, message=""):
+    print(total_gold)
+    print(total_predicted)
+    print(total_matched)
     precision = 100.0 * total_matched / total_predicted if total_predicted > 0 else 0
     recall = 100.0 * total_matched / total_gold if total_gold > 0 else 0
     f1 = 2 * precision * recall / (precision + recall) if precision + recall > 0 else 0
@@ -140,10 +143,6 @@ def evaluate( y, pred):
             comp_sents += 1
 
     precision, recall, f1 = _print_f1(total_gold, total_pred, total_matched, "SRL")
-    ul_prec, ul_recall, ul_f1 = _print_f1(total_gold, total_pred, total_unlabeled_matched, "Unlabeled SRL")
-    total = total_gold_label + total_pred_label
-    for key in total:
-        _print_f1(total_gold_label[key], total_pred_label[key], total_matched_label[key], str(key))
 
     return
 
@@ -195,16 +194,12 @@ def print_tokens(i, j):
 #     current_corpus.append(preprocess(doc))
 
 
+pred = [[{"id_pred":[1, 1], "args":[[0, 0, "ARG0"], [2, 2, "ARG1"],[3, 9, "ARG3"], [6, 6, "AM-LVB"]]}, {"id_pred": [7, 7], "args":[[4, 4, "ARG1"], [6, 6, "AM-TMP"], [8, 9, "ARG2"]]}]]
 
-predfile = open('10validate_pas_results.json')
-pred = json.load(predfile)['data']
-pred_ = [items for sublist in pred for items in sublist] 
-with open('srl_test_2_result.txt', 'w') as f:
-    for item in pred_:
-        f.write(str(item)+'\n')
+gold = [[{"id_pred":[1, 1], "args":[[0, 0, "ARG0"], [2, 2, "ARG1"],[3, 9, "ARG2"]]}, {"id_pred": [7, 7], "args":[[4, 4, "ARG1"], [6, 6, "AM-LVB"], [8, 9, "ARG2"]]}]]
 
 
 
 
 # print(pred_[0])
-# srl_data.evaluate(y_, pred_)
+evaluate(gold, pred)

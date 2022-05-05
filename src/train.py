@@ -36,10 +36,10 @@ def main():
     loaded = False
     full_ext_pas_list = []
     full_start = idx
-    while (idx < 100000):
+    while (idx < len(corpus)):
         print('Current = '+ str(idx))
         s = idx
-        e = idx + batch if idx + batch < 100000 else 100000
+        e = idx + batch if idx + batch < len(corpus) else len(corpus)
 
         # Preprocess
         print('Preprocessing...')
@@ -118,8 +118,8 @@ def main():
     reg_avg.fit(features_avg, target)
     
     print('Dumping model')
-    pickle.dump(reg_min, open(model_path+'linearRegression_spansrl_min_noincomplete.sav', 'wb'))
-    pickle.dump(reg_avg, open(model_path+'linearRegression_spansrl_avg_noincomplete.sav', 'wb'))
+    pickle.dump(reg_min, open(model_path+'linearRegression_spansrl_min.sav', 'wb'))
+    pickle.dump(reg_avg, open(model_path+'linearRegression_spansrl_avg.sav', 'wb'))
 
 if __name__ == "__main__":
     main()

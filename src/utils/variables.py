@@ -6,7 +6,7 @@ rouge_metrics = ['rouge-1', 'rouge-2', 'rouge-l']
 metrics = ['f', 'r', 'p']
 
 raw_data_path = 'data/raw/'
-results_path = 'data/results/'
+results_path = 'data/results/new/'
 features_path = 'data/features/'
 models_path = 'models/new_linearRegression_spansrl_'
 
