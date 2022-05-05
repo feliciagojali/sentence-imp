@@ -8,7 +8,7 @@ metrics = ['f', 'r', 'p']
 raw_data_path = 'data/raw/'
 results_path = 'data/results/'
 features_path = 'data/features/'
-models_path = 'models/linearRegression_spansrl_'
+models_path = 'models/new_linearRegression_spansrl_'
 
 core_labels = ['ARG0','ARG1','ARG2', 'ARG3', 'ARG4', 'ARG5']
 verb_labels = ['VERB']

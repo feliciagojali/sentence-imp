@@ -8,7 +8,7 @@ from tqdm import tqdm
 from sklearn.linear_model import LinearRegression
 from utils.features_utils import compute_target, load_sim_emb, generate_sim_table, generate_features, generate_target_features, load_train_df, prepare_df, prepare_features
 from utils.pas_utils import convert_to_PAS_models, convert_to_extracted_PAS, get_sentence, load_srl_model, predict_srl, filter_incomplete_pas
-from utils.main_utils import initialize_nlp, initialize_rouge, read_data, return_config, preprocess, prepare_df_result, pos_tag
+from utils.main_utils import initialize_nlp, initialize_rouge, read_data, return_config, preprocess, preprocess_title, pos_tag
 
 model_path = 'models/'
 import os
@@ -47,7 +47,7 @@ def main():
         print('Preprocessing...')
         current_corpus = [preprocess(x) for x in corpus[s:e]]
         current_summary = summary[s:e]
-        current_title = corpus_title[s:e]
+        current_title = [preprocess_title(x) for x in corpus_title[s:e]]
 
         # Pos Tag
         with torch.cuda.device(0):

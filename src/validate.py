@@ -1,40 +1,34 @@
 import sys
-import torch
 import time
-import numpy as np
+import json
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-import tensorflow as tf
 from models import GraphAlgorithm
 from utils.features_utils import load_sim_emb, generate_sim_table, generate_features, prepare_df, prepare_features
 from utils.pas_utils import filter_pas, convert_to_PAS_models, convert_to_extracted_PAS, load_srl_model, predict_srl, filter_incomplete_pas
-from utils.main_utils import create_graph, evaluate, initialize_nlp, initialize_rouge, load_reg_model, maximal_marginal_relevance, natural_language_generation, preprocess, prepare_df_result, pos_tag, read_data, return_config, transform_summary, semantic_graph_modification
+from utils.main_utils import create_graph, evaluate, initialize_nlp, initialize_rouge, load_reg_model, maximal_marginal_relevance, natural_language_generation, preprocess, preprocess_title, prepare_df_result, pos_tag, read_data, return_config, transform_summary, semantic_graph_modification
 
 
-tf.random.set_seed(42)
 
 results_path = 'data/results/'
 
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="5,7"
+# os.environ["CUDA_VISIBLE_DEVICES"]="5,7"
 
 
 def main():
     types = sys.argv[2]
     config = return_config(sys.argv)
-    corpus, corpus_summary, corpus_title = read_data(types, config)
+    corpus, corpus_summary_, corpus_title_ = read_data(types, config)
     
     batch = config['batch_size'] if 'batch_size' in config else len(corpus)
     isOneOnly = config['one_pas_only']
     algorithm = config['algorithm']
     # Load model
     w2v, ft = load_sim_emb(config)
-    try:
-        current = pd.read_csv(results_path+types+'_'+algorithm+'_results.csv', sep=';', index_col=0)
-        idx = round(current.iloc[-1]['idx_news']) + 1
-    except:    
-        idx = 0
+  
+    idx = 0
     total_no_srl = 0
     loaded = False
     all_ref = []
@@ -47,24 +41,32 @@ def main():
 
         # Preprocess
         print('Preprocessing...')
-        current_corpus = [preprocess(x) for x in corpus[s:e]]
-        current_summary = corpus_summary[s:e]
-        current_title = corpus_title[s:e]
+        # id = [469, 479, 762, 1901, 2257]
+        id = [3006, 10353, 10289, 10334, 2030, 10243, 5549, 1047, 6359, 8723]
+        current_corpus = []
+        current_summary = []
+        corpus_title = []
+        for i in id:
+            doc = corpus[i]
+            current_corpus.append(preprocess(doc))
+            current_summary.append(corpus_summary_[i])
+            corpus_title.append(preprocess_title(corpus_title_[i]))
 
         # Pos Tag
-        print('POS Tagging...')
-        with torch.cuda.device(0):
-            if (not loaded):
-                nlp = initialize_nlp()
-            corpus_pos_tag = [pos_tag(nlp, sent, i+s) for i, sent in tqdm(enumerate(current_corpus))]
-            torch.cuda.empty_cache()
+        # with torch.cuda.device(0):
+        if (not loaded):
+            nlp = initialize_nlp()
+        corpus_pos_tag = [pos_tag(nlp, sent, i+s) for i, sent in tqdm(enumerate(current_corpus))]
+        # torch.cuda.empty_cache()
         # SRL
         print('Predicting SRL...')
-        with tf.device('/gpu:1'):
-            if (not loaded):
-                srl_model, srl_data = load_srl_model(config)
-            corpus_pas = [predict_srl(doc, srl_data, srl_model, config) for doc in tqdm(current_corpus)]
-        
+        # with tf.device('/gpu:1'):
+        #     if (not loaded):
+        #         srl_model, srl_data = load_srl_model(config)
+        #     corpus_pas = [predict_srl(doc, srl_data, srl_model, config) for doc in tqdm(current_corpus)]
+        f = open('results.json')
+        corpus_pas = json.load(f)
+        corpus_pas = [corpus_pas[str(key)] for key in [0, 1, 2,3, 4 ,5, 6, 7, 8, 9]]
         ## Filter incomplete PAS
         corpus_pas = [[filter_incomplete_pas(pas,pos_tag_sent) for pas, pos_tag_sent in zip(pas_doc, pos_tag_sent)] for pas_doc, pos_tag_sent in zip(corpus_pas, corpus_pos_tag)]
         
@@ -99,7 +101,7 @@ def main():
         # Semantic Graph Formation
         sim_table = generate_sim_table(ext_pas_list, ext_pas_flatten, [w2v, ft])
         graph_list = [create_graph(corpus_pas, sim) for corpus_pas, sim in zip(ext_pas_flatten, sim_table)]
-        generate_features(ext_pas_list, sim_table, current_title)
+        generate_features(ext_pas_list, sim_table, corpus_title)
 
         if (not loaded):
             reg = load_reg_model(config['algorithm'])
@@ -113,6 +115,8 @@ def main():
                 pred = reg.predict(features_min)
             else:
                 pred = reg.predict(features_avg)
+            for k in pred:
+                print(k)
             semantic_graph_modification(graph_list[i], pred)
             # graph-based ranking algorithm
             graph_algorithm = GraphAlgorithm(graph_list[i], threshold=0.0001, dp=0.85, init=1.0, max_iter=100)
@@ -132,18 +136,13 @@ def main():
         
         all_ref.extend(total_ref)
         all_sum.extend(total_sum)
-        if (idx % 500 == 0):
-            result = evaluate(r, all_ref, all_sum, all_start)
-            result = pd.DataFrame(data=result)
-            prepare_df_result(result, types, algorithm)
-            all_ref = []
-            all_sum = []
-            all_start = idx+batch
+     
 
         print('Total no SRL = '+str(total_no_srl))
         for i in no_found:
             print(i)
         idx += batch
+        break
         
     result = evaluate(r, all_ref, all_sum, all_start)
     result = pd.DataFrame(data=result)

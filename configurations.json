@@ -9,16 +9,17 @@
         "max_char": 52,
         "char_list": " 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.,-_()[]{}!?:;#'\"/\\%$`&=*+@^~|",
         "features": "noincomplete.csv",
-        "word_emb_path":"data/pretrained/word2vec_news.model",
+        "word_emb_path":"spansrl/data/pretrained/word2vec_news.model",
         "fasttext_emb_path": "data/pretrained/kyubyong.ft.id.bin",
         "w2v_sim_path":"data/pretrained/word2vec-input_sent.txt-s300-c5-w5-e10-SG.model",
         "ft_sim_path": "data/pretrained/kyubyong.ft.id.bin",
         "batch_size": 10,
         "use_fasttext": false,
-        "use_pruning": true,
+        "use_pruning": false,
+        "use_constraint": true,
         "one_pas_only": false,
         "algorithm": "min",
         "data_path": "summary_corpus.csv",
-        "srl_model": "data/pretrained/full_w2v_bihlstm300_pruning"
+        "srl_model": "data/pretrained/w2v_2bihlstm300"
     }
 }

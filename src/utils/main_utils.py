@@ -17,13 +17,13 @@ from .pas_utils import get_flatten_pas, get_flatten_arguments
 from .variables import models_path, raw_data_path, exception_pos_tags, rouge_metrics, metrics, results_path
 
 tqdm.pandas()
-stanza.download("id", model_dir='/raid/data/m13518101')
+# stanza.download("id", model_dir='/raid/data/m13518101')
 
 def initialize_nlp(isTraining=False):
     if (not isTraining):
-        nlp = stanza.Pipeline(lang="id", tokenize_pretokenized=True, dir='/raid/data/m13518101', pos_batch_size=500)
+        nlp = stanza.Pipeline(lang="id", tokenize_pretokenized=True, pos_batch_size=500, depparse_batch_size=500)
     else:
-        nlp = stanza.Pipeline(lang="id", tokenize_pretokenized=True, dir='/raid/data/m13518101', pos_batch_size=500, processors='tokenize, pos')
+        nlp = stanza.Pipeline(lang="id", tokenize_pretokenized=True, pos_batch_size=500, processors='tokenize, pos')
     return nlp
 
 def initialize_rouge():
@@ -32,21 +32,21 @@ def initialize_rouge():
 
 def load_reg_model(algorithm) :
     loaded_model = pickle.load(open(models_path + algorithm + ".sav", 'rb'))
+    print(loaded_model.coef_)
     return loaded_model
 
 def preprocess_title(url):
-    url = ast.literal_eval(url)
     title = url.split('/')[-1]
-    title = title.split['-']
+    title = title.split('-')
+    print(title)
     return title
     
 def read_data(types, config):
     df = pd.read_csv(raw_data_path + types + '_' + config['data_path'], index_col=0)
-    df['article'] = df['article'].progress_apply(lambda x : ast.literal_eval(x))
-    df['summary'] = df['summary'].progress_apply(lambda x : ast.literal_eval(x))
-    df['title'] = df['title'].progress_apply(lambda x : ast.literal_eval(x))
+    df['clean_article'] = df['clean_article'].progress_apply(lambda x : ast.literal_eval(x))
+    df['clean_summary'] = df['clean_summary'].progress_apply(lambda x : ast.literal_eval(x))
 
-    return df['article'], df['summary'], df['title']
+    return df['clean_article'], df['clean_summary'], df['url']
 
 def return_config(arg):
     config = arg[1]
@@ -61,39 +61,32 @@ def return_config(arg):
 
     return config
 
-def prepare_for_sent_tokenize(sents):
-    reg = '[A-Z] [.] *|[0-9]+ [.] |[?] [,"]|No [.] [0-9]+|[Jj]ln [.]|[Jj]alan [.]'
-    questReg = '["].+ [.].+["]'
-    questSubs = [re.findall(questReg, s) for s in sents]
-    newQuestSubs = [[re.sub(" [.] ",".", s) for s in sub] for sub in questSubs]
-    subs = [re.findall(reg, s) for s in sents]
-    newSubs = [[re.sub("\s", "", s) for s in sub] for sub in subs]
-    for i in range(len(sents)):
-        o = subs[i] + questSubs[i]
-        n = newSubs[i] + newQuestSubs[i]
-        for old, new in zip(o, n):
-            sents[i]= sents[i].replace(old, new)
-    return sents
-
-def filter_article(sent):
-    result = re.sub('^.? ?[Ll][iI][pP][Uu][Tt][Aa][Nn]( . )? ?6? . [cC]om [.,] [a-zA-Z ]+ : ', '', sent) # remove liputan6 .com with place
-    result = re.sub('^.? ?[Ll][iI][pP][Uu][Tt][Aa][Nn]( . )? ?6? . [cC]om [.,] ', '', result) # remove liputan6 .com only
-    result = re.sub('^.? ?[Ll][iI][pP][Uu][Tt][Aa][Nn]( . )? ?6? . [cC]om [a-zA-Z ]+ : ', '', result) # remove liputan6 .com only
-    result = re.sub('^.? ?[Ll][iI][pP][Uu][Tt][Aa][Nn]( . )? ?6? , [a-zA-Z ]+ : ', '', result) # remove liputan6 .com only
-    result = re.sub('^[a-zA-Z]+ : [Ll][iI][pP][Uu][Tt][Aa][Nn]( . )? ?6? . [Cc]om , [a-zA-Z ]+ : ', '', result) # remove liputan6 .com only
-    result = re.sub('[Ll][iI][pP][Uu][Tt][Aa][Nn]( . )? ?6? . [cC]om , [a-zA-Z ]+ : ', '', result) # remove liputan6 .com only
+def filter_article(sent, isLast=False, isFirst=False):
+    result = sent
     result = re.sub(r"(/[a-z]*)?&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-fA-F]{1,6}) ;", "", result) # remove HTML entites
+    if (isFirst):
+        result = re.sub('^.? ?[Ll][iI][pP][Uu][Tt][Aa][Nn] ?6? ?[.] ?[cC]om [.,] [a-zA-Z ]+ : ', '', result) # remove liputan6 .com with place
+        result = re.sub('^.? ?[Ll][iI][pP][Uu][Tt][Aa][Nn]( [.] )6? ?[.] ?[cC]om [.,] [a-zA-Z ]+ : ', '', result)
+        result = re.sub('^.? ?[Ll][iI][pP][Uu][Tt][Aa][Nn] ?6? ?[.] ?[cC]om [.,] ', '', result) # remove liputan6 .com only
+        result = re.sub('^.? ?[Ll][iI][pP][Uu][Tt][Aa][Nn]( [.] )6? ?[.] ?[cC]om [.,] ', '', result) # remove liputan6 .com only
+        result = re.sub('^.? ?[Ll][iI][pP][Uu][Tt][Aa][Nn] ?6? ?[.] ?[cC]om [a-zA-Z ]+ : ', '', result) # remove liputan6 .com only
+        result = re.sub('^.? ?[Ll][iI][pP][Uu][Tt][Aa][Nn]( [.] )6? ?[.] ?[cC]om [a-zA-Z ]+ : ', '', result) # remove liputan6 .com only
+        result = re.sub('^.? ?[Ll][iI][pP][Uu][Tt][Aa][Nn] ?6? ?, ?[a-zA-Z ]+ : ', '', result) # remove liputan6 .com only
+        result = re.sub('^.? ?[Ll][iI][pP][Uu][Tt][Aa][Nn]( [.] )6? ?, ?[a-zA-Z ]+ : ', '', result) # remove liputan6 .com only
+        result = re.sub('^[a-zA-Z]+ : [Ll][iI][pP][Uu][Tt][Aa][Nn] ?6? ?. ?[Cc]om , [a-zA-Z ]+ : ', '', result) # remove liputan6 .com only
+        result = re.sub('^[a-zA-Z]+ : [Ll][iI][pP][Uu][Tt][Aa][Nn]( [.] )6? ?. ?[Cc]om ?, ?[a-zA-Z ]+ : ', '', result) # remove liputan6 .com only
+        result = re.sub('[Ll][iI][pP][Uu][Tt][Aa][Nn] ?6? ?. ?[cC]om ?, ?[a-zA-Z ]+ : ', '', result) # remove liputan6 .com only
+        result = re.sub('[Ll][iI][pP][Uu][Tt][Aa][Nn]( [.] )6? ?. ?[cC]om ?, ?[a-zA-Z ]+ : ', '', result) # remove liputan6 .com only
+        result = re.sub('^[a-zA-Z]+ : ', '', result) # remove place
+    if (isLast):
+        result = re.sub("[(].*[)] ?[.]? ?$", "", result) #remove author
     return result
 
 def preprocess(sent):
     if (not isinstance(sent, list)):
         sent = ast.literal_eval(sent)
     sents = [' '.join(sen) for sen in sent]
-    sents = prepare_for_sent_tokenize(sents)
-    sents = [sent_tokenize(s) for s in sents]
-    sents = [item for sublist in sents for item in sublist]
-    sents = [filter_article(s) for  s in (sents)]
-    sents = [re.sub("[.]"," . ", sent) for sent in sents]
+    sents = [filter_article(s, id==len(sents)-1, id==0) for  id, s in enumerate(sents)]
     sentences = [s.split(' ') for s in sents if s != '.' ]
     sentences = [[x for x in sent if x] for sent in sentences]
     sentences = [x for x in sentences if len(x) > 1]
@@ -192,24 +185,23 @@ def get_max_similarity(cand_elmt, summary, sentence_similarity_table):
     return max_sim
 
 # MMR
-def maximal_marginal_relevance(min_sum_length, min_sent, ext_pas_list, ext_pas_flatten, graph_sentences, num_iter, sentence_similarity_table):
+def maximal_marginal_relevance(min_sum_length, min_sent, ext_pas_list, ext_pas_flatten, graph_sentences, num_iter, sentence_similarity_table, pred_id=None):
     
     summary = []
     idx_pas_chosen = {}
-    not_chosen = [i for i in range(len(ext_pas_flatten))]
+    not_chosen = [i for i in range(len(ext_pas_flatten))] if pred_id is None else pred_id
     mask = create_mask_arr(ext_pas_list)
-
+    
     max_score = max(graph_sentences.nodes[i][num_iter] for i in not_chosen)
     for i in not_chosen:
         if graph_sentences.nodes[i][num_iter] == max_score:
             summary.append(i)
             not_chosen.remove(i)
             break
-    
-
-    idx_pas_chosen[mask[i]] = [i]
     pas_idx = get_pas_idx(mask, i)
-    sum_length = len(get_tokens_without_punctuation(ext_pas_list[mask[i]], pas_idx-1))
+    tokens = get_tokens_without_punctuation(ext_pas_list[mask[i]], pas_idx-1)
+    sum_length = len(tokens)
+    idx_pas_chosen[mask[i]] = [i]
     get_summary = True
     while (get_summary and len(not_chosen) > 0):
         max_mmr = 0.0
@@ -238,7 +230,6 @@ def maximal_marginal_relevance(min_sum_length, min_sent, ext_pas_list, ext_pas_f
         not_chosen.remove(idx_max_mmr)
         if (sum_length >= min_sum_length and len(idx_pas_chosen) >= min_sent):
             get_summary = False
-    print(summary)
     return summary
 # NLG
 
@@ -499,10 +490,10 @@ def evaluate(rouge, refs, hyps, s, current=None):
     return current
 
 def prepare_df_result(result, types, algorithm):
-    if (os.path.isfile(results_path+types+'_'+algorithm+'_results.csv')):
-        current = pd.read_csv(results_path+types+'_'+algorithm+'_results.csv', sep=';', index_col=0)
-        result = pd.concat([current, result], ignore_index=True)    
-    result.to_csv(results_path+types+'_'+algorithm+'_results.csv', sep=';')
+    # if (os.path.isfile(results_path+types+'_'+algorithm+'_results.csv')):
+    #     current = pd.read_csv(results_path+types+'_'+algorithm+'_results.csv', sep=';', index_col=0)
+    #     result = pd.concat([current, result], ignore_index=True)    
+    result.to_csv(results_path+types+'_'+algorithm+'_resultstest.csv', sep=';')
     return result
 
 

@@ -2,10 +2,9 @@ import re
 import tensorflow as tf
 from anytree import LevelOrderIter
 from models import ExtractedPAS, NewPAS
-from spansrl.src.features import SRLData
+# from spansrl.src.features import SRLData
 from tensorflow.keras.models import load_model
 from .variables import additional_predicates, core_labels, verb_labels, additional_pred_regex, identified_predicates
-all_predicates = additional_predicates + identified_predicates
 tf.random.set_seed(42)
 
 def load_srl_model(config):
@@ -37,28 +36,28 @@ def predict_srl(doc, srl_data, srl_model, config):
 def filter_incomplete_pas(pas_list, pos_tag_sent, isTraining=False):
     filtered = []
     for pas in pas_list:
-        arg_list = [p[2] for p in pas['args']]
+        # arg_list = [p[2] for p in pas['args']]
         
-        if (not isTraining):
+        # check if predicate out of range
+        pred_id = pas['id_pred'][0]
+        try:
+            pred = pos_tag_sent.tokens[pred_id]
+        except:
+            # index out of range
+            continue
+        
+        # if (not isTraining):
+            ## PAS Selection Rules
             # must have core arguments conditions
-            if(not bool(set(arg_list) & set(core_labels))):
-                continue
-            # check if predicate by pos tag
-            pred_id = pas['id_pred'][0]
-            try:
-                pos_tag = pos_tag_sent.tokens[pred_id].name.pos_tag
-            except:
-                # index out of range
-                continue
-            if (pos_tag not in verb_labels):
-                continue
-                # text = pos_tag_sent.tokens[pred_id].name.text.lower()
-                # if (text not in all_predicates):
-                #     if (not re.findall(additional_pred_regex, text)):
-                #         print('pos tag')
-                #         print(pos_tag_sent.tokens[pred_id].name.text)
-                #         print(pos_tag_sent.tokens[pred_id].name.pos_tag)
-                #         continue
+            # if(not bool(set(arg_list) & set(core_labels))):
+            #     continue
+            # # at least two tokens
+            # max_len = len(pos_tag_sent.tokens)
+            # tokens = [[x for x in range(arg[0], arg[1]+1) if x < max_len] for arg in pas['args']]
+            # tokens = get_flatten_arguments(tokens)
+            # if (len(tokens) < 2):
+            #     continue
+            
         filtered.append(pas)
     return filtered
             

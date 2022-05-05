@@ -176,7 +176,7 @@ class FeaturesTest(unittest.TestCase):
     
     def test_title_feature(self):
         title_doc_1 = [5, 3, 1, 2, 0, 0, 0, 0, 0]
-        title_real = [n/l for n, l in zip(title_doc_1, length_doc_1)]
+        title_real = [n/4 for n in title_doc_1]
         title = [ext_pas.title_feature for ext_pas in ext_pas_list[0]]
         title = [items for sublist in title for items in sublist] 
         for x, y in zip(title, title_real):
