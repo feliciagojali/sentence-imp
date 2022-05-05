@@ -1,6 +1,6 @@
 import sys
 import torch
-import time
+import json
 import numpy as np
 import numpy as np
 import pandas as pd
@@ -8,8 +8,8 @@ from tqdm import tqdm
 import tensorflow as tf
 from models import GraphAlgorithm
 from utils.features_utils import load_sim_emb, generate_sim_table, generate_features, prepare_df, prepare_features
-from utils.pas_utils import filter_pas, convert_to_PAS_models, convert_to_extracted_PAS, load_srl_model, predict_srl, filter_incomplete_pas
-from utils.main_utils import create_graph, evaluate, initialize_nlp, initialize_rouge, load_reg_model, maximal_marginal_relevance, natural_language_generation, preprocess, prepare_df_result, pos_tag, read_data, return_config, transform_summary, semantic_graph_modification
+from utils.pas_utils import append_pas,filter_pas, convert_to_PAS_models, convert_to_extracted_PAS, load_srl_model, predict_srl, filter_incomplete_pas
+from utils.main_utils import create_graph, evaluate, initialize_nlp, initialize_rouge, load_reg_model, maximal_marginal_relevance, natural_language_generation, preprocess, preprocess_title, prepare_df_result, pos_tag, read_data, return_config, transform_summary, semantic_graph_modification
 
 
 tf.random.set_seed(42)
@@ -17,7 +17,7 @@ tf.random.set_seed(42)
 results_path = 'data/results/'
 
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="2,3"
+os.environ["CUDA_VISIBLE_DEVICES"]="6,7"
 
 
 def main():
@@ -39,6 +39,10 @@ def main():
     loaded = False
     all_ref = []
     all_sum = []
+    all_pas = []
+    # pas_file = open('data/results/val_srl.json')
+    
+    # all_pas = json.load(pas_file)['data']
     all_start = idx
     while (idx < len(corpus)):
         print('Current = '+ str(idx))
@@ -49,7 +53,7 @@ def main():
         print('Preprocessing...')
         current_corpus = [preprocess(x) for x in corpus[s:e]]
         current_summary = corpus_summary[s:e]
-        current_title = corpus_title[s:e]
+        current_title = [preprocess_title(x) for x in corpus_title[s:e]]
 
         # Pos Tag
         print('POS Tagging...')
@@ -64,7 +68,8 @@ def main():
             if (not loaded):
                 srl_model, srl_data = load_srl_model(config)
             corpus_pas = [predict_srl(doc, srl_data, srl_model, config) for doc in tqdm(current_corpus)]
-        
+        # corpus_pas = all_pas[s:e]
+        all_pas.extend(corpus_pas)
         ## Filter incomplete PAS
         corpus_pas = [[filter_incomplete_pas(pas,pos_tag_sent) for pas, pos_tag_sent in zip(pas_doc, pos_tag_sent)] for pas_doc, pos_tag_sent in zip(corpus_pas, corpus_pos_tag)]
         ## Cleaning when there is no SRL 
@@ -79,7 +84,6 @@ def main():
         no_found = []
         for id in reversed(empty_ids):
             i, j = id
-            print(id)
             no_found.append(current_corpus[i][j])
             del corpus_pas[i][j]
             del corpus_pos_tag[i][j]
@@ -135,6 +139,8 @@ def main():
             result = evaluate(r, all_ref, all_sum, all_start)
             result = pd.DataFrame(data=result)
             prepare_df_result(result, types, algorithm)
+            append_pas(all_pas, types)
+            all_pas = []
             all_ref = []
             all_sum = []
             all_start = idx+batch
@@ -144,6 +150,7 @@ def main():
             print(i)
         idx += batch
         
+    append_pas(all_pas, types)  
     result = evaluate(r, all_ref, all_sum, all_start)
     result = pd.DataFrame(data=result)
     res = prepare_df_result(result, types, algorithm)

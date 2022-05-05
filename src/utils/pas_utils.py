@@ -1,4 +1,6 @@
-import re
+import json
+import string
+import numpy as np
 import tensorflow as tf
 from anytree import LevelOrderIter
 from models import ExtractedPAS, NewPAS
@@ -13,7 +15,21 @@ def load_srl_model(config):
     srl_model = load_model(config['srl_model'])
     return srl_model, srl_data
 
-
+def append_pas(data, type):
+    filename = 'data/results/'+type+'_srl.json'
+    try:
+        f = open(filename)
+        current = json.load(f)['data']
+    except:
+        current = []
+    
+    all = []
+    all.extend(current)
+    all.extend(data)
+    with open(filename, "w") as file:
+        all = {'data':all}
+        json.dump(all, file)
+    
 def predict_srl(doc, srl_data, srl_model, config):
     ## Convert features 
     srl_data.extract_features(doc)
@@ -36,27 +52,30 @@ def predict_srl(doc, srl_data, srl_model, config):
 def filter_incomplete_pas(pas_list, pos_tag_sent, isTraining=False):
     filtered = []
     for pas in pas_list:
-        # arg_list = [p[2] for p in pas['args']]
+        arg_list = [p[2] for p in pas['args']]
+        
+        # check if predicate out of range
+        pred_id = pas['id_pred'][0]
+        try:
+            pred = pos_tag_sent.tokens[pred_id]
+        except:
+            # index out of range
+            continue
         
         if (not isTraining):
-            # check if predicate out of range
-            pred_id = pas['id_pred'][0]
-            try:
-                pred = pos_tag_sent.tokens[pred_id]
-            except:
-                # index out of range
+            # PAS Selection Rules
+            # must have core arguments conditions
+            if(not bool(set(arg_list) & set(core_labels))):
                 continue
             
-            ## PAS Selection Rules
-            # must have core arguments conditions
-            # if(not bool(set(arg_list) & set(core_labels))):
-            #     continue
-            # # at least two tokens
-            # max_len = len(pos_tag_sent.tokens)
-            # tokens = [[x for x in range(arg[0], arg[1]+1) if x < max_len] for arg in pas['args']]
-            # tokens = get_flatten_arguments(tokens)
-            # if (len(tokens) < 2):
-            #     continue
+            # at least two tokens arguments that is NOT punctuation
+            max_len = len(pos_tag_sent.tokens)
+            tokens = [[x for x in range(arg[0], arg[1]+1) if x < max_len] for arg in pas['args']]
+            tokens = list(set(get_flatten_arguments(tokens)))
+            filtered_tokens = [x for x in tokens if pos_tag_sent.tokens[x].name.text not in string.punctuation ]
+            
+            if (len(filtered_tokens) < 2):
+                continue
             
         filtered.append(pas)
     return filtered

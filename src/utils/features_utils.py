@@ -1,4 +1,5 @@
 import sys
+import time
 import string
 import os.path
 import pandas as pd
@@ -66,9 +67,9 @@ def generate_features(ext_pas_list, similarity_table, corpus_title):
     for i, (doc, title) in enumerate(zip(ext_pas_list, corpus_title)):    
         corpus_vocabs, most_common_words = get_corpus_vocabs_and_most_common_words(doc)
         idx_pas = 0
-        max_p2p = 1 #0
-        max_fst = 1 #0
-        max_length = 1
+        max_p2p = -999
+        max_fst = 0
+        max_length = 0
         for j, extracted_pas in enumerate(doc):
             extracted_pas.p2p_feature = [calculate_sim(similarity_table[i],idx_pas, id_p) for id_p in range(len(extracted_pas.pas))]
             extracted_pas.fst_feature = [calculate_fst_pas(extracted_pas.tokens, p, most_common_words) for p in extracted_pas.pas]
@@ -171,12 +172,11 @@ def calculate_argument_similarity(args1, tokens1, args2, tokens2, emb):
                 for word2 in second_loop_arg:
                     first_word = first_ref_tokens[word1].name.text.lower()
                     second_word = second_ref_tokens[word2].name.text.lower()
-                
+                    start = time.time()
                     if (embedding_model.has_index_for(first_word) and embedding_model.has_index_for(second_word)):
                         sim = embedding_model.similarity(first_word, second_word)
                     else:
                         sim = embedding_model_oov.similarity(first_word, second_word)
-
                     if (sim > max_sim_arg):
                         max_sim_arg = sim
                 
@@ -379,7 +379,7 @@ def flatten_summary(arr):
     return sum
 
 def calculate_max_similarity(sim_table, id_mask, id_pas):
-    s = 0
+    s = -999
     start = id_mask + id_pas
     for sim in sim_table[start]:
         s = max(s,sim)
@@ -388,7 +388,10 @@ def calculate_max_similarity(sim_table, id_mask, id_pas):
         for val in range(start):
             s = max(s, sim_table[val][i])
             i -= 1
-    return s
+    if (s == -999):
+        return 0
+    else:
+        return s
 
 def calculate_min_similarity(sim_table, id_mask, id_pas):
     s = 999
@@ -400,17 +403,21 @@ def calculate_min_similarity(sim_table, id_mask, id_pas):
         for val in range(start):
             s = min(s, sim_table[val][i])
             i -= 1
-    return s   
+    if (s == 999):
+        return 0
+    else:
+        return s
 
 def calculate_title_word_occurence(title_tokens, pas_tokens):
     count = 0.0
     length = 0.0
-    for word in pas_tokens:
+    pas_tokens = [word.lower() for word in pas_tokens]
+    for word in title_tokens:
         if word not in string.punctuation:
             length += 1
-            if word.lower() in title_tokens:
+            if word.lower() in pas_tokens:
                 count += 1
-    if length == 0.0:
-        return 0
-    else:
+    if length != 0:
         return count/length
+    else:
+        return 0

@@ -19,6 +19,8 @@ class NewPAS:
         self.verb = list(set(verb))
         for arg in labels['args']:
             endpoints = [x for x in range(arg[0], arg[1]+1) if x < max_len]
+            if len(endpoints) == 0:
+                continue
             label = arg[2]
             if (label in self.args):
                 self.args[label].append(endpoints)

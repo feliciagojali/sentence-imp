@@ -12,7 +12,7 @@ from utils.main_utils import preprocess_title, initialize_nlp, initialize_rouge,
 
 model_path = 'models/'
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="6,7"
+os.environ["CUDA_VISIBLE_DEVICES"]="4,5"
 
 tf.random.set_seed(42)
 def main():
@@ -30,16 +30,16 @@ def main():
         current = load_train_df(config, 'train')
         idx = round(current.iloc[-1]['idx_news']) + 1
     except:
-        idx = 0
+        idx = 100000
     
     total_no_srl = 0
     loaded = False
     full_ext_pas_list = []
     full_start = idx
-    while (idx < 100000):
+    while (idx < len(corpus)):
         print('Current = '+ str(idx))
         s = idx
-        e = idx + batch if idx + batch < 100000 else 100000
+        e = idx + batch if idx + batch < len(corpus) else len(corpus)
 
         # Preprocess
         print('Preprocessing...')
@@ -111,17 +111,17 @@ def main():
         for i in no_found:
             print(i)
     prepare_df(full_ext_pas_list, config, 'train', full_start)
-    reg_min = LinearRegression()
-    reg_avg = LinearRegression()
+    # reg_min = LinearRegression()
+    # reg_avg = LinearRegression()
 
-    features_min, features_avg, target = prepare_features(config, 'train')
+    # features_min, features_avg, target = prepare_features(config, 'train')
 
-    reg_min.fit(features_min, target)
-    reg_avg.fit(features_avg, target)
+    # reg_min.fit(features_min, target)
+    # reg_avg.fit(features_avg, target)
     
-    print('Dumping model')
-    pickle.dump(reg_min, open(model_path+'linearRegression_spansrl_min_noincomplete.sav', 'wb'))
-    pickle.dump(reg_avg, open(model_path+'linearRegression_spansrl_avg_noincomplete.sav', 'wb'))
+    # print('Dumping model')
+    # pickle.dump(reg_min, open(model_path+'linearRegression_spansrl_min_noincomplete.sav', 'wb'))
+    # pickle.dump(reg_avg, open(model_path+'linearRegression_spansrl_avg_noincomplete.sav', 'wb'))
 
 if __name__ == "__main__":
     main()
