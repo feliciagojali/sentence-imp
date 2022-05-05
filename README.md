@@ -53,6 +53,7 @@ make test config=$(config)
 <a id="1">[1]</a> 
 Khairunnisa, N.Y. (2021). Peringkasan Otomatis Kumpulan Berita Berbahasa 
 Indonesia dengan Semantic Role Labeling dan Model Regresi Linier.
+<br/>
 <a id="2">[2]</a> 
 Koto, F., Lau, J.H., & Baldwin, T. (2020). Liputan6: A Large-scale Indonesian 
 Dataset for Text Summarization. AACL.
