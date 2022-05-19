@@ -8,7 +8,7 @@ from tqdm import tqdm
 from models import GraphAlgorithm
 from utils.features_utils import  load_sim_emb, generate_sim_table, generate_features, prepare_df, prepare_features
 from utils.pas_utils import filter_pas, convert_to_PAS_models, convert_to_extracted_PAS, load_srl_model, predict_srl, filter_incomplete_pas
-from utils.main_utils import accept_input, create_graph, initialize_nlp, load_reg_model, maximal_marginal_relevance, natural_language_generation, preprocess, prepare_df_result, pos_tag, read_data, return_config, transform_summary, semantic_graph_modification
+from utils.main_utils import evaluate, accept_input, create_graph, initialize_nlp, initialize_rouge, load_reg_model, maximal_marginal_relevance, natural_language_generation, preprocess, prepare_df_result, pos_tag, read_data, return_config, transform_summary, semantic_graph_modification
 
 
 tf.random.set_seed(42)
@@ -22,41 +22,32 @@ os.environ["CUDA_VISIBLE_DEVICES"]="1,7"
 def main():
     config = return_config(sys.argv)
     
-    corpus, corpus_title = accept_input()
     
-    batch = config['batch_size'] if 'batch_size' in config else len(corpus)
+    batch = 1
     isOneOnly = config['one_pas_only']
-    algorithm = config['algorithm']
     # Load model
+    nlp = initialize_nlp()
+    srl_model, srl_data = load_srl_model(config)
     w2v, ft = load_sim_emb(config)
+    r_metrics = initialize_rouge()
 
-    final_result = []
     loaded = False
     idx = 0
-    while (idx < len(corpus)):
-        print('Current = '+ str(idx))
-        s = idx
-        e = idx + batch if idx + batch < len(corpus) else len(corpus)
+    while (True):
+        corpus, corpus_title, ref_sum = accept_input()
 
         # Preprocess
-        print('Preprocessing...')
-        current_corpus = [preprocess(x) for x in corpus[s:e]]
-        current_title = corpus_title[s:e]
+        current_corpus = [preprocess(x) for x in corpus]
+        current_title = corpus_title
 
-        # Pos Tag
-        print('POS Tagging...')
-        if (not loaded):
-            nlp = initialize_nlp()
-        corpus_pos_tag = [pos_tag(nlp, sent, i+s) for i, sent in tqdm(enumerate(current_corpus))]
+        # Pos Tag            
+        corpus_pos_tag = [pos_tag(nlp, sent, i) for i, sent in tqdm(enumerate(current_corpus))]
         # SRL
-        print('Predicting SRL...')
-        if (not loaded):
-            srl_model, srl_data = load_srl_model(config)
+            
         corpus_pas = [predict_srl(doc, srl_data, srl_model, config) for doc in tqdm(current_corpus)]
 
         ## Filter incomplete PAS
         corpus_pas = [[filter_incomplete_pas(pas,pos_tag_sent) for pas, pos_tag_sent in zip(pas_doc, pos_tag_sent)]for pas_doc, pos_tag_sent in zip(corpus_pas, corpus_pos_tag)]
-        print(corpus_pas)
         
         ## Cleaning when there is no SRL
         print('Cleaning empty SRL...')
@@ -94,7 +85,7 @@ def main():
         total_sum = []
         for i, doc in enumerate(ext_pas_list):
             # Predicting
-            df = prepare_df([doc], config, 'pred', s)
+            df = prepare_df([doc], config, 'pred', 0)
             features_min, features_avg, _ = prepare_features(config, 'pred', df)
             if config['algorithm'] == 'min':
                 pred = reg.predict(features_min)
@@ -112,13 +103,24 @@ def main():
 
             hyps = transform_summary(summary_paragraph)
             total_sum.append(hyps)
-
-        final_result.extend(total_sum)
-        idx+=batch
         
-    f = open(results_path+sys.argv[2], 'w+')
-    for r in final_result:
-        f.write(r)
+        total_ref = ref_sum
+        
+        print('Ringkasan oleh model')
+        print('----------------')
+        print(total_sum[0])
+
+        if (total_ref[0] != []):
+            print('Ringkasan referensi')
+            print('------------------')
+            result = evaluate(r_metrics, total_ref, total_sum, 0)
+            print(total_ref[0])
+            print('Hasil evaluasi')
+            print('---------------')
+            res = result.select_dtypes(include=np.number)
+            print(res)
+
+
 
 
 if __name__ == "__main__":

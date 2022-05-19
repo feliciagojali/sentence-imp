@@ -38,12 +38,13 @@ def load_reg_model(algorithm) :
 def preprocess_title(url):
     title = url.split('/')[-1]
     title = title.split('-')
+    print(title)
     return title
     
 def read_data(types, config):
     df = pd.read_csv(raw_data_path + types + '_' + config['data_path'], index_col=0)
-    df['clean_article'] = df['clean_article'].progress_apply(lambda x : ast.literal_eval(x))
-    df['clean_summary'] = df['clean_summary'].progress_apply(lambda x : ast.literal_eval(x))
+    # df['clean_article'] = df['clean_article'].progress_apply(lambda x : ast.literal_eval(x))
+    # df['clean_summary'] = df['clean_summary'].progress_apply(lambda x : ast.literal_eval(x))
 
     return df['clean_article'], df['clean_summary'], df['url']
 
@@ -200,7 +201,7 @@ def maximal_marginal_relevance(min_sum_length, min_sent, ext_pas_list, ext_pas_f
     pas_idx = get_pas_idx(mask, i)
     tokens = get_tokens_without_punctuation(ext_pas_list[mask[i]], pas_idx-1)
     sum_length = len(tokens)
-    idx_pas_chosen[mask[i]] = [i]
+    idx_pas_chosen[mask[i]] = tokens
     get_summary = True
     while (get_summary and len(not_chosen) > 0):
         max_mmr = 0.0
@@ -216,15 +217,14 @@ def maximal_marginal_relevance(min_sum_length, min_sent, ext_pas_list, ext_pas_f
             idx_max_mmr = not_chosen[0]
        
         pas_idx = get_pas_idx(mask, idx_max_mmr)
-       
         tokens = get_tokens_without_punctuation(ext_pas_list[mask[idx_max_mmr]], pas_idx-1)
-        length_new_summary = len(tokens)
         if (mask[idx_max_mmr] in idx_pas_chosen):
-            idx_pas_chosen[mask[idx_max_mmr]].append(idx_max_mmr)
+            new_tokens = list(set(idx_pas_chosen[mask[idx_max_mmr]] + tokens))
+            idx_pas_chosen[mask[idx_max_mmr]] = new_tokens
         else:
-            idx_pas_chosen[mask[idx_max_mmr]] = [idx_max_mmr]
-
-        sum_length += length_new_summary # len(corpus_sentences[idx_max_mmr].sentence.words)
+            idx_pas_chosen[mask[idx_max_mmr]] = tokens
+        pas_length = [len(idx_pas_chosen[x]) for x in list(idx_pas_chosen.keys())]
+        sum_length = sum(pas_length) # len(corpus_sentences[idx_max_mmr].sentence.words)
         summary.append(idx_max_mmr)
         not_chosen.remove(idx_max_mmr)
         if (sum_length >= min_sum_length and len(idx_pas_chosen) >= min_sent):
@@ -449,6 +449,8 @@ def natural_language_generation(summary, ext_pas_list, ext_pas_flatten, pos_tag,
 
 # Evaluation
 def transform_summary(summary_paragraph):
+    if (not isinstance(summary_paragraph, list)):
+        summary_paragraph = ast.literal_eval(summary_paragraph)
     reference_summary = []
     for sent in summary_paragraph:
         reference_summary.append(" ".join(sent))
@@ -481,10 +483,11 @@ def evaluate(rouge, refs, hyps, s, current=None):
     return current
 
 def prepare_df_result(result, types, algorithm):
-    if (os.path.isfile(results_path+types+'_'+algorithm+'_results.csv')):
-        current = pd.read_csv(results_path+types+'_'+algorithm+'_results.csv', sep=';', index_col=0)
+    filename = results_path+types+'_'+algorithm+'_results10doc.csv'
+    if (os.path.isfile(filename)):
+        current = pd.read_csv(filename, sep=';', index_col=0)
         result = pd.concat([current, result], ignore_index=True)    
-    result.to_csv(results_path+types+'_'+algorithm+'_results.csv', sep=';')
+    result.to_csv(filename, sep=';')
     return result
 
 
@@ -498,22 +501,32 @@ def accept_input():
     while(True):
         sent = str(input('Please input filepath that contain the article: '))
         try:
-            f = open(sent)
+            f = open('data/interactive/'+sent)
         except:
             continue
-        articles = [sent_tokenize(s) for s in f.readlines()]
-        articles = [item for sublist in articles for item in sublist]
-        articles = [word_tokenize(t) for t in articles]
+        articles = [word_tokenize(t) for t in f.readlines()]
         break
     while(True):
-        sent = str(input('Please input filepath that contain the title of the articles (please type `-1` if there are no titles provided): '))
+        sent = str(input('Please input filepath that contain the title of the article (please type `-1` if there are no titles provided): '))
         try:
             if sent == '-1':
                 titles = []
                 break
-            f = open(sent)
+            f = open('data/interactive/'+sent)
         except:
             continue
         titles = word_tokenize(f.read())
         break
-    return [articles], [titles]
+    while(True):
+        sent = str(input('Please input filepath that contain the reference summary of the article (please type `-1` if there are no reference provided): '))
+        try:
+            if sent == '-1':
+                reference = []
+                break
+            f = open('data/interactive/'+sent)
+        except:
+            continue
+        reference = f.read()
+        break
+
+    return [articles], [titles], [reference]
